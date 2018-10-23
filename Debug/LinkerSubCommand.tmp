@@ -1,0 +1,7 @@
+-input="./dbsct.obj"
+-input="./hwsetup.obj"
+-input="./intprg.obj"
+-input="./kit12_rx62t.obj"
+-input="./resetprg.obj"
+-input="./sbrk.obj"
+-input="./vecttbl.obj"

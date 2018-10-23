@@ -1,0 +1,76 @@
+Optimizing Linkage Editor (V.10.02.00.000)        20-Oct-2018 12:20:24
+
+*** Options ***
+
+-library=C:\WORKSP~1\KIT12_~1\KIT12_~1\Debug\kit12_rx62t.lib
+-noprelink
+-list=kit12_rx62t.map
+-nooptimize
+-start=B_1,R_1,B_2,R_2,B,R,SU,SI/01000,PResetPRG/0FFFF8000,C_1,C_2,C,C$*,D*,P,PIntPRG,W*/0FFFF8100,FIXEDVECT/0FFFFFFD0
+-nologo
+-nomessage
+-rom=D=R,D_1=R_1,D_2=R_2
+-output=C:\WorkSpace\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.abs
+-subcommand=C:/WorkSpace/kit12_rx62t/kit12_rx62t\Debug\LinkerSubCommand.tmp
+-input="./dbsct.obj"
+-input="./hwsetup.obj"
+-input="./intprg.obj"
+-input="./kit12_rx62t.obj"
+-input="./resetprg.obj"
+-input="./sbrk.obj"
+-input="./vecttbl.obj"
+
+*** Error information ***
+
+*** Mapping List ***
+
+SECTION                            START      END         SIZE   ALIGN
+
+B_1
+                                  00001000  00001000         0   1
+R_1
+                                  00001000  00001000         0   1
+B_2
+                                  00001000  00001000         0   2
+R_2
+                                  00001000  00001000         0   2
+B
+                                  00001000  0000140b       40c   4
+R
+                                  0000140c  0000140f         4   4
+SU
+                                  00001410  0000170f       300   4
+SI
+                                  00001710  0000180f       100   4
+PResetPRG
+                                  ffff8000  ffff8033        34   4
+C_1
+                                  ffff8100  ffff8100         0   1
+C_2
+                                  ffff8100  ffff8100         0   2
+C
+                                  ffff8100  ffff8117        18   4
+C$DSEC
+                                  ffff8118  ffff813b        24   4
+C$BSEC
+                                  ffff813c  ffff8153        18   4
+C$VECT
+                                  ffff8154  ffff8553       400   4
+D
+                                  ffff8554  ffff8557         4   4
+D_2
+                                  ffff8558  ffff8558         0   2
+D_1
+                                  ffff8558  ffff8558         0   1
+P
+                                  ffff8558  ffff8c0d       6b6   4
+PIntPRG
+                                  ffff8c0e  ffff8c1b         e   1
+W_1
+                                  ffff8c1c  ffff8c1c         0   4
+W_2
+                                  ffff8c1c  ffff8c1c         0   2
+W
+                                  ffff8c1c  ffff8c1c         0   4
+FIXEDVECT
+                                  ffffffd0  ffffffff        30   4
