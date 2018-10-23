@@ -11,6 +11,8 @@ This program supports the following boards:
 * RMC-RX62T board
 * Sensor board Ver. 5
 * Motor drive board Ver. 5
+*TESTKOMMENTAR Max
+*test nr 2
 */
 
 /*======================================*/
