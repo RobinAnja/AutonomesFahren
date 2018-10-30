@@ -64,6 +64,8 @@ void handle( int angle );
 unsigned long   cnt0;
 unsigned long   cnt1;
 int             pattern;
+double speedFactor = 0.9;
+
 
 /***********************************************************************/
 /* Main program                                                        */
@@ -156,13 +158,13 @@ void main(void)
                 case 0x00:
                     /* Center -> straight */
                     handle( 0 );
-                    motor( 25 ,25 );
+                    motor( 75 ,75 );
                     break;
 
                 case 0x04:
                     /* Slight amount left of center -> slight turn to right */
                     handle( 15 );
-                    motor( 25 ,25 );
+                    motor( 75 ,75 );
                     break;
 
                 case 0x06:
@@ -739,9 +741,16 @@ void motor( int accele_l, int accele_r )
 {
     int    sw_data;
 
-    sw_data = dipsw_get() + 5;
-    accele_l = accele_l * sw_data / 20;
-    accele_r = accele_r * sw_data / 20;
+
+    /* old Settings*/
+    //sw_data = dipsw_get() + 5;
+    //accele_l = accele_l * sw_data / 20;
+    //accele_r = accele_r * sw_data / 20;
+
+    //use speedfactor instead
+    accele_l = accele_l * speedFactor;
+    accele_r = accele_r * speedFactor;
+
 
     /* Left Motor Control */
     if( accele_l >= 0 ) {
