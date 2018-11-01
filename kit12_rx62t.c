@@ -12,7 +12,7 @@ This program supports the following boards:
 * Sensor board Ver. 5
 * Motor drive board Ver. 5
 *
-*Vermessungsdaten über das Auto NR 2
+*Vermessungsdaten ï¿½ber das Auto NR 2
 *PDF: 185
 * W=0,143m (Wheelbase)
 * T =0,155m (Tread) (vorder abstand != hintere Abstand)
@@ -69,7 +69,7 @@ unsigned long   cnt1;
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.7;
+double speedFactor = 0.8;
 
 
 /***********************************************************************/
