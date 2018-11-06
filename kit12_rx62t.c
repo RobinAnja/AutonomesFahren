@@ -29,7 +29,8 @@ This program supports the following boards:
 
 /* Constant settings */
 #define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2300            /* Servo center value          */
+#define SERVO_CENTER    2050            /* Servo center value NR 2 _zwischen 2050
+ 	 	 	 	 	 	 	 	 	 	 	 NR-5 */
 #define HANDLE_STEP     13              /* 1 degree value              */
 
 /* Masked value settings X:masked (disabled) O:not masked (enabled)Maske bedeutet welche Sensorn überhaupt abgefragt werden */
@@ -69,7 +70,7 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.8;
+double speedFactor = 0.4;
 
 
 /***********************************************************************/
@@ -274,7 +275,7 @@ void main(void)
 
 		case 21:
 			/* Processing at 1st cross line */
-			led_out(0x3);
+			led_out(0x2); //LED 3
 			handle(0);
 			motor(0, 0);
 			pattern = 22;
@@ -283,7 +284,9 @@ void main(void)
 
 		case 22:
 			/* Read but ignore 2nd line */
-			if (cnt1 > 100) {
+			//default 100
+			if (cnt1 > 300) {
+				led_out(0x2); //LED 3
 				pattern = 23;
 				cnt1 = 0;
 			}
@@ -291,10 +294,15 @@ void main(void)
 
 		case 23:
 			/* Trace, crank detection after cross line */
-			if (sensor_inp(MASK4_4) == 0xf8) {
+			if ((sensor_inp(MASK4_4) == 0xf8) ||
+				(sensor_inp(MASK4_4) == 0xfb) ||
+				(sensor_inp(MASK4_4) == 0xf3) ||
+				(sensor_inp(MASK4_4) == 0xf1) ||
+				(sensor_inp(MASK4_4) == 0xf0)
+				) {
 				/* Left crank determined -> to left crank clearing processing */
-				led_out(0x1);
-				handle(-38);
+				led_out(0x1); //LED2
+				handle(-50);
 				motor(10, 50);
 				pattern = 31;
 				cnt1 = 0;
