@@ -29,10 +29,11 @@ This program supports the following boards:
 
 /* Constant settings */
 #define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2300            /* Servo center value          */
+#define SERVO_CENTER    2050            /* Servo center value NR 2 _zwischen 2050
+ 	 	 	 	 	 	 	 	 	 	 	 NR-5 */
 #define HANDLE_STEP     13              /* 1 degree value              */
 
-/* Masked value settings X:masked (disabled) O:not masked (enabled) */
+/* Masked value settings X:masked (disabled) O:not masked (enabled)Maske bedeutet welche Sensorn überhaupt abgefragt werden */
 #define MASK2_2         0x66            /* X O O X  X O O X            */
 #define MASK2_0         0x60            /* X O O X  X X X X            */
 #define MASK0_2         0x06            /* X X X X  X O O X            */
@@ -65,11 +66,11 @@ void handle(int angle);
 /* Global variable declarations         */
 /*======================================*/
 unsigned long   cnt0;
-unsigned long   cnt1;
+unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.8;
+double speedFactor = 0.4;
 
 
 /***********************************************************************/
@@ -274,7 +275,7 @@ void main(void)
 
 		case 21:
 			/* Processing at 1st cross line */
-			led_out(0x3);
+			led_out(0x2); //LED 3
 			handle(0);
 			motor(0, 0);
 			pattern = 22;
@@ -283,7 +284,9 @@ void main(void)
 
 		case 22:
 			/* Read but ignore 2nd line */
-			if (cnt1 > 100) {
+			//default 100
+			if (cnt1 > 300) {
+				led_out(0x2); //LED 3
 				pattern = 23;
 				cnt1 = 0;
 			}
@@ -291,10 +294,15 @@ void main(void)
 
 		case 23:
 			/* Trace, crank detection after cross line */
-			if (sensor_inp(MASK4_4) == 0xf8) {
+			if ((sensor_inp(MASK4_4) == 0xf8) ||
+				(sensor_inp(MASK4_4) == 0xfb) ||
+				(sensor_inp(MASK4_4) == 0xf3) ||
+				(sensor_inp(MASK4_4) == 0xf1) ||
+				(sensor_inp(MASK4_4) == 0xf0)
+				) {
 				/* Left crank determined -> to left crank clearing processing */
-				led_out(0x1);
-				handle(-38);
+				led_out(0x1); //LED2
+				handle(-50);
 				motor(10, 50);
 				pattern = 31;
 				cnt1 = 0;
@@ -302,7 +310,6 @@ void main(void)
 			}
 			if (sensor_inp(MASK4_4) == 0x1f) {
 				/* Right crank determined -> to right crank clearing processing */
-				led_out(0x2);
 				handle(38);
 				motor(50, 10);
 				pattern = 41;
@@ -370,16 +377,21 @@ void main(void)
 
 		case 51:
 			/* Processing at 1st right half line detection */
-			led_out(0x2);
+			//standard 2
+			led_out(0x1); //LED 3
+
+
 			handle(0);
 			motor(0, 0);
 			pattern = 52;
-			cnt1 = 0;
+			cnt1 = 0; // Clear Timer
 			break;
 
-		case 52:
+		case 52: // wait 100ms and go to next pattern [PDF 142]
 			/* Read but ignore 2nd time */
-			if (cnt1 > 100) {
+			if (cnt1 > 100) { //wait 100ms
+				led_out(0x2); //LED 2
+
 				pattern = 53;
 				cnt1 = 0;
 			}
@@ -387,7 +399,8 @@ void main(void)
 
 		case 53:
 			/* Trace, lane change after right half line detection */
-			if (sensor_inp(MASK4_4) == 0x00) {
+			if (sensor_inp(MASK4_4) == 0x00) { // wenn alle sensoren nuller werfen
+				//standard 15
 				handle(15);
 				motor(40, 31);
 				pattern = 54;
@@ -423,8 +436,11 @@ void main(void)
 
 		case 54:
 			/* Right lane change end check */
-			if (sensor_inp(MASK4_4) == 0x3c) {
+			//standard ..== 0x3c
+			//Issue #4
+			if (sensor_inp(MASK4_4) == 0x18) {
 				led_out(0x0);
+
 				pattern = 11;
 				cnt1 = 0;
 			}
@@ -485,7 +501,10 @@ void main(void)
 
 		case 64:
 			/* Left lane change end check */
-			if (sensor_inp(MASK4_4) == 0x3c) {
+			/* Standard 0x3c
+			 * Issue #4
+			 */
+			if (sensor_inp(MASK4_4) == 0x18) {
 				led_out(0x0);
 				pattern = 11;
 				cnt1 = 0;
