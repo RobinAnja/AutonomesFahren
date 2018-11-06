@@ -70,7 +70,7 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.4;
+double speedFactor = 0.8;
 
 
 /***********************************************************************/
@@ -302,15 +302,20 @@ void main(void)
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				led_out(0x1); //LED2
-				handle(-50);
+				handle(-45);
 				motor(10, 50);
 				pattern = 31;
 				cnt1 = 0;
 				break;
 			}
-			if (sensor_inp(MASK4_4) == 0x1f) {
+			if ((sensor_inp(MASK4_4) == 0x8f) ||
+				(sensor_inp(MASK4_4) == 0xbf) ||
+				(sensor_inp(MASK4_4) == 0x3f) ||
+				(sensor_inp(MASK4_4) == 0x1f) ||
+				(sensor_inp(MASK4_4) == 0x0f)
+							) {
 				/* Right crank determined -> to right crank clearing processing */
-				handle(38);
+				handle(45);
 				motor(50, 10);
 				pattern = 41;
 				cnt1 = 0;
