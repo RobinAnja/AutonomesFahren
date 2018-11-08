@@ -70,7 +70,8 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.7;
+double speedFactor = 0.5;
+//auf 0.35 klappt 90 und lane switch
 
 
 /***********************************************************************/
@@ -164,9 +165,8 @@ void main(void)
 				pattern = 61;
 				break;
 			}
-			if((sensor_inp(MASK4_4))==0x00){ // Check if still on track if not, break
-				motor(0,0);
-			}
+
+
 			switch (sensor_inp(MASK3_3)) {
 			case 0x00:
 				/* Center -> straight */
@@ -311,11 +311,10 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK4_4) == 0x8f) || // fehlerhaft->überprüfen
-				(sensor_inp(MASK4_4) == 0xbf) ||
+			if ((sensor_inp(MASK4_4) == 0x1f) ||
 				(sensor_inp(MASK4_4) == 0x3f) ||
-				(sensor_inp(MASK4_4) == 0x1f) ||
-				(sensor_inp(MASK0_4) == 0x0f)
+				(sensor_inp(MASK0_4) == 0x0f) ||
+				(sensor_inp(MASK0_4) == 0x07)
 							) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
@@ -328,7 +327,7 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-				motor(100, 100);
+				motor(10, 10);
 				break;
 			case 0x04:
 			case 0x06:
