@@ -296,9 +296,8 @@ void main(void)
 			/* Trace, crank detection after cross line */
 			if ((sensor_inp(MASK4_4) == 0xf8) ||
 				(sensor_inp(MASK4_4) == 0xfb) ||
-				(sensor_inp(MASK4_4) == 0xf3) ||
-				(sensor_inp(MASK4_4) == 0xf1) ||
-				(sensor_inp(MASK4_4) == 0xf0)
+				(sensor_inp(MASK4_0) == 0xe0) ||
+				(sensor_inp(MASK4_0) == 0xf0)
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				led_out(0x1); //LED2
@@ -313,7 +312,7 @@ void main(void)
 				(sensor_inp(MASK4_4) == 0xbf) ||
 				(sensor_inp(MASK4_4) == 0x3f) ||
 				(sensor_inp(MASK4_4) == 0x1f) ||
-				(sensor_inp(MASK4_4) == 0x0f)
+				(sensor_inp(MASK0_4) == 0x0f)
 							) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
