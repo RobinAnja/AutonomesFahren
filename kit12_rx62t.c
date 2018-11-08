@@ -70,8 +70,9 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.5;
-//auf 0.35 klappt 90 und lane switch
+double speedFactor = 0.7;
+//auf 0.5 klappt 90 und lane switch
+// Es sollte nicht mehr als 0,7 eingestellt werden
 
 
 /***********************************************************************/
@@ -163,6 +164,11 @@ void main(void)
 			}
 			if (check_leftline()) {    /* Left half line detection check */
 				pattern = 61;
+				break;
+
+			}
+			if(check_not_on_track()){ // break if not on track
+				motor(0,0);
 				break;
 			}
 
@@ -296,25 +302,36 @@ void main(void)
 			break;
 
 		case 23:
-			/* Trace, crank detection after cross line */
-			if ((sensor_inp(MASK4_4) == 0xf8) ||
-				(sensor_inp(MASK4_4) == 0xfb) ||
-				(sensor_inp(MASK4_0) == 0xe0) ||
-				(sensor_inp(MASK4_0) == 0xf0)
+			/* Trace, crank detection after cross line
+			 *
+			 * 1 - reconised Line
+			 * 0 - not recognised track line
+			 * X - deactive Mask Value
+			 * */
+			if ((sensor_inp(MASK4_4) == 0xf8) || // 1111 1000
+				(sensor_inp(MASK4_4) == 0xfc) || // 1111 1100
+				(sensor_inp(MASK4_4) == 0xfb) || // 1111 1110
+				(sensor_inp(MASK3_0) == 0xe0) || // 111X XXXX
+				(sensor_inp(MASK2_0) == 0xc0) || // 11XX XXXX
+				(sensor_inp(MASK4_0) == 0x80) || // 1000 XXXX
+				(sensor_inp(MASK4_0) == 0xf0)    // 1111 XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				led_out(0x1); //LED2
 				handle(-45);
 				//standard (10,50)
-				motor(5, 70);
+				motor(10, 50);
 				pattern = 31;
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK4_4) == 0x1f) ||
-				(sensor_inp(MASK4_4) == 0x3f) ||
-				(sensor_inp(MASK0_4) == 0x0f) ||
-				(sensor_inp(MASK0_4) == 0x07)
+			if ((sensor_inp(MASK4_4) == 0x1f) || // 0001 1111
+				(sensor_inp(MASK4_4) == 0x3f) || // 0011 1111
+				(sensor_inp(MASK4_4) == 0x7f) || // 0111 1111
+				(sensor_inp(MASK0_3) == 0x07) || // XXXX X111
+				(sensor_inp(MASK0_2) == 0x03) || // XXXX XX11
+				(sensor_inp(MASK0_4) == 0x01) || // XXXX 0001
+				(sensor_inp(MASK0_4) == 0x0f)    // 0000 1111
 							) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
@@ -327,7 +344,7 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-				motor(10, 10);
+				motor(0, 0);//break hard
 				break;
 			case 0x04:
 			case 0x06:
@@ -661,6 +678,22 @@ unsigned char startbar_get(void)
 	b = ~PORT4.PORT.BIT.B0 & 0x01;     /* Read start bar signal       */
 
 	return  b;
+}
+/***********************************************************************/
+/* Check if still on track in lab                                     */
+/* Return values: 0: still on track, 1: not on track                      */
+/***********************************************************************/
+int check_not_on_track(void)
+{
+	unsigned char b;
+	int ret;
+
+	ret = 0;
+	b = sensor_inp(MASK4_4);
+	if (b == 0x00) {
+		ret = 1;
+	}
+	return ret;
 }
 
 /***********************************************************************/
