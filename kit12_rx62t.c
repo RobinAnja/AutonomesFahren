@@ -29,7 +29,7 @@ This program supports the following boards:
 
 /* Constant settings */
 #define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2050            /* Servo center value NR 2 _zwischen 2050
+#define SERVO_CENTER    2038            /* Servo center value NR 2 _zwischen 2038
  	 	 	 	 	 	 	 	 	 	 	 NR-5 */
 #define HANDLE_STEP     13              /* 1 degree value              */
 
@@ -70,7 +70,7 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 1;
+double speedFactor = 0.7;
 
 
 /***********************************************************************/
@@ -163,6 +163,9 @@ void main(void)
 			if (check_leftline()) {    /* Left half line detection check */
 				pattern = 61;
 				break;
+			}
+			if((sensor_inp(MASK4_4))==0x00){ // Check if still on track if not, break
+				motor(0,0);
 			}
 			switch (sensor_inp(MASK3_3)) {
 			case 0x00:
@@ -308,7 +311,7 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK4_4) == 0x8f) ||
+			if ((sensor_inp(MASK4_4) == 0x8f) || // fehlerhaft->überprüfen
 				(sensor_inp(MASK4_4) == 0xbf) ||
 				(sensor_inp(MASK4_4) == 0x3f) ||
 				(sensor_inp(MASK4_4) == 0x1f) ||
