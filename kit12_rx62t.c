@@ -286,6 +286,7 @@ void main(void)
 			/* Processing at 1st cross line */
 			led_out(0x2); //LED 3
 			handle(0);
+			// initial break on first line read
 			motor(0, 0);
 			pattern = 22;
 			cnt1 = 0;
@@ -294,8 +295,10 @@ void main(void)
 		case 22:
 			/* Read but ignore 2nd line */
 			//default 100
-			if (cnt1 > 300) {
-				led_out(0x2); //LED 3
+			// wert zu hoch bedeutet das er in case 22 hängt obwohl er schon über die abbiegung gefahren ist
+			// wert zu niederig er erkennt die zweite doppelline als abbiegung und ist zu früh aus case 22 rasu gebrochhen
+			if (cnt1 > 50) {
+				led_out(0x1); //LED 2
 				pattern = 23;
 				cnt1 = 0;
 			}
@@ -352,7 +355,7 @@ void main(void)
 			case 0x03:
 				/* Left of center -> turn to right */
 				handle(8);
-				motor(80, 75);
+				motor(10, 5);
 				break;
 			case 0x20:
 			case 0x60:
@@ -360,7 +363,7 @@ void main(void)
 			case 0xc0:
 				/* Right of center -> turn to left */
 				handle(-8);
-				motor(75, 80);
+				motor(5, 10);
 				break;
 			}
 			break;
