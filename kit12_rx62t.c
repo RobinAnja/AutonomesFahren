@@ -44,6 +44,7 @@ This program supports the following boards:
 #define MASK0_4         0x0f            /* X X X X  O O O O            */
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
+
 /*======================================*/
 /* Prototype declarations               */
 /*======================================*/
@@ -167,7 +168,8 @@ void main(void)
 				break;
 
 			}
-			if(check_not_on_track()){ // break if not on track
+
+			if(check_not_on_track()){  // break if not on track
 				motor(0,0);
 				break;
 			}
@@ -292,17 +294,41 @@ void main(void)
 			cnt1 = 0;
 			break;
 
-		case 22:
-			/* Read but ignore 2nd line */
-			//default 100
-			// wert zu hoch bedeutet das er in case 22 hängt obwohl er schon über die abbiegung gefahren ist
-			// wert zu niederig er erkennt die zweite doppelline als abbiegung und ist zu früh aus case 22 rasu gebrochhen
+
+			/* Old Case 22
+			 * Read but ignore 2nd line
+			 * default 100
+			 * wert zu hoch bedeutet das er in case 22 hängt obwohl er schon über die abbiegung gefahren ist
+			 * wert zu niederig er erkennt die zweite doppelline als abbiegung und ist zu früh aus case 22 rasu gebrochhen
+			 * 		case 22:
 			if (cnt1 > 50) {
 				led_out(0x1); //LED 2
 				pattern = 23;
 				cnt1 = 0;
 			}
 			break;
+			 */
+		case 22:
+			int wasInGap,outGap=0;
+
+			while(pattern==22){
+				if (cntl>700) { //Failsafe if manouver takes longer than 0,7ms
+					pattern = 23;
+					break;
+				}
+				if (check_crossline_gap()){ //check if car is in gap beetween lines
+					int wasInGap=1;
+				}
+				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
+					int outGap =1;
+				}
+				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
+					pattern = 23;
+					cnt1 =0;
+				}
+			}
+			break;
+
 
 		case 23:
 			/* Trace, crank detection after cross line
@@ -698,7 +724,23 @@ int check_not_on_track(void)
 	}
 	return ret;
 }
+/***********************************************************************/
+/* Check Gap beetween Crossline                                      */
+/* Return values: 0: still on crossline, 1: inside the gap                      */
+/***********************************************************************/
+int check_crossline_gap(void)
+{
+	unsigned char b;
+	int ret;
 
+	ret = 0;
+	if ((sensor_inp(MASK2_0) == 0x00) ||
+		(sensor_inp(MASK0_2) == 0x00)
+){
+		ret = 1;
+	}
+	return ret;
+}
 /***********************************************************************/
 /* Cross line detection processing                                     */
 /* Return values: 0: no cross line, 1: cross line                      */
