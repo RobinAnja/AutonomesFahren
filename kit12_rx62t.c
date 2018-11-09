@@ -75,6 +75,9 @@ double speedFactor = 0.7;
 //auf 0.5 klappt 90 und lane switch
 // Es sollte nicht mehr als 0,7 eingestellt werden
 
+int wasInGap=0;
+int outGap=0;
+
 
 /***********************************************************************/
 /* Main program                                                        */
@@ -309,18 +312,19 @@ void main(void)
 			break;
 			 */
 		case 22:
-			int wasInGap,outGap=0;
+			outGap=0;
+			wasInGap=0;
 
 			while(pattern==22){
-				if (cntl>700) { //Failsafe if manouver takes longer than 0,7ms
+				if (cnt1>700) { //Failsafe if manouver takes longer than 0,7ms
 					pattern = 23;
 					break;
 				}
 				if (check_crossline_gap()){ //check if car is in gap beetween lines
-					int wasInGap=1;
+					wasInGap=1;
 				}
 				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
-					int outGap =1;
+					outGap =1;
 				}
 				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
 					pattern = 23;
@@ -730,7 +734,6 @@ int check_not_on_track(void)
 /***********************************************************************/
 int check_crossline_gap(void)
 {
-	unsigned char b;
 	int ret;
 
 	ret = 0;
