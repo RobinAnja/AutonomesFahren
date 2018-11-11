@@ -341,13 +341,7 @@ void main(void)
 			 * 0 - not recognised track line
 			 * X - deactive Mask Value
 			 * */
-			if ((sensor_inp(MASK4_4) == 0xf8) || // 1111 1000
-				(sensor_inp(MASK4_4) == 0xfc) || // 1111 1100
-				(sensor_inp(MASK4_4) == 0xfb) || // 1111 1110
-				(sensor_inp(MASK3_0) == 0xe0) || // 111X XXXX
-				(sensor_inp(MASK2_0) == 0xc0) || // 11XX XXXX
-				(sensor_inp(MASK4_0) == 0x80) || // 1000 XXXX
-				(sensor_inp(MASK4_0) == 0xf0)    // 1111 XXXX
+			if ((sensor_inp(MASK2_0) == 0xc0) // 11XX XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				led_out(0x1); //LED2
@@ -358,14 +352,8 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK4_4) == 0x1f) || // 0001 1111
-				(sensor_inp(MASK4_4) == 0x3f) || // 0011 1111
-				(sensor_inp(MASK4_4) == 0x7f) || // 0111 1111
-				(sensor_inp(MASK0_3) == 0x07) || // XXXX X111
-				(sensor_inp(MASK0_2) == 0x03) || // XXXX XX11
-				(sensor_inp(MASK0_4) == 0x01) || // XXXX 0001
-				(sensor_inp(MASK0_4) == 0x0f)    // 0000 1111
-							) {
+			if ((sensor_inp(MASK0_2) == 0x03) // XXXX XX11
+				) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
 				motor(50, 10);
