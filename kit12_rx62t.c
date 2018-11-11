@@ -12,7 +12,7 @@ This program supports the following boards:
 * Sensor board Ver. 5
 * Motor drive board Ver. 5
 *
-*Vermessungsdaten �ber das Auto NR 2
+*Data about Car NR 2
 *PDF: 185
 * W=0,143m (Wheelbase)
 * T =0,155m (Tread) (vorder abstand != hintere Abstand)
@@ -29,8 +29,8 @@ This program supports the following boards:
 
 /* Constant settings */
 #define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2038            /* Servo center value NR 2 _zwischen 2038
- 	 	 	 	 	 	 	 	 	 	 	 NR-5 */
+#define SERVO_CENTER    2038            /* Servo center value NR 2 2038 */
+
 #define HANDLE_STEP     13              /* 1 degree value              */
 
 /* Masked value settings X:masked (disabled) O:not masked (enabled)Maske bedeutet welche Sensorn überhaupt abgefragt werden */
@@ -71,10 +71,14 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
+//Maximum is 0,7 for secure driving, due to hardware limits
 double speedFactor = 0.7;
-//auf 0.5 klappt 90 und lane switch
-// Es sollte nicht mehr als 0,7 eingestellt werden
 
+
+//This is the maximum angle for NR 2
+int maximumAngle = 45;
+
+//Checker if car is in gap between to lines.
 int wasInGap=0;
 int outGap=0;
 
@@ -895,10 +899,15 @@ void motor(int accele_l, int accele_r)
 /* Servo steering operation                                            */
 /* Arguments:   servo operation angle: -90 to 90                       */
 /*              -90: 90-degree turn to left, 0: straight,              */
-/*               90: 90-degree turn to right                           */
+/*               90: 90-degree turn to right
+/ *				 Limited to -45 to 45									*/
 /***********************************************************************/
 void handle(int angle)
 {
+	//if used angle is to big
+	if(angle>maximumAngle)angle = maximumAngle;
+	if(angle>-maximumAngle)angle = -maximumAngle;
+
 	/* When the servo move from left to right in reverse, replace "-" with "+". */
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
 }
