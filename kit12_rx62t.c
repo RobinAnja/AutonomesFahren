@@ -176,10 +176,10 @@ void main(void)
 
 			}
 
-			if(check_not_on_track()){  // break if not on track
-				motor(0,0);
-				break;
-			}
+		//	if(check_not_on_track()){  // break if not on track
+		//		motor(0,0);
+		//		break;
+		//	}
 
 
 			switch (sensor_inp(MASK3_3)) {
@@ -187,6 +187,7 @@ void main(void)
 				/* Center -> straight */
 				handle(0);
 				motor(100, 100);
+				led_out(0x01);
 				break;
 				//Right Turn
 			case 0x04:
@@ -224,6 +225,7 @@ void main(void)
 				/* Slight amount right of center -> slight turn to left */
 				handle(-15);
 				motor(80, 80);
+				led_out(0x02);
 				break;
 
 			case 0x60:
@@ -320,19 +322,19 @@ void main(void)
 			wasInGap=0;
 
 			while(pattern==22){
-				if (cnt1>700) { //Failsafe if manouver takes longer than 0,7ms
-					pattern = 23;
-					break;
-				}
+
 				if (check_crossline_gap()){ //check if car is in gap beetween lines
 					wasInGap=1;
+					led_out(0x1);
 				}
 				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
 					outGap =1;
+					led_out(0x2);
 				}
 				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
 					pattern = 23;
 					cnt1 =0;
+					led_out(0x3);
 				}
 			}
 			break;
@@ -345,7 +347,7 @@ void main(void)
 			 * 0 - not recognised track line
 			 * X - deactive Mask Value
 			 * */
-			if ((sensor_inp(MASK2_0) == 0xc0) // 11XX XXXX
+			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				led_out(0x1); //LED2
@@ -356,7 +358,7 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK0_2) == 0x03) // XXXX XX11
+			if ((sensor_inp(MASK0_3) == 0x07) // XXXX X111
 				) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
@@ -369,7 +371,7 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-				motor(0, 0);//break hard
+				motor(10, 10);//break hard
 				break;
 			case 0x04:
 			case 0x06:
@@ -747,7 +749,8 @@ int check_crossline(void)
 
 	ret = 0;
 	b = sensor_inp(MASK3_3);
-	if (b == 0xe7) {
+	if ((b == 0xe7)||
+		(b== 0x66)){
 		ret = 1;
 	}
 	return ret;
@@ -906,7 +909,7 @@ void handle(int angle)
 {
 	//if used angle is to big
 	if(angle>maximumAngle)angle = maximumAngle;
-	if(angle>-maximumAngle)angle = -maximumAngle;
+	if(angle<-maximumAngle)angle = -maximumAngle;
 
 	/* When the servo move from left to right in reverse, replace "-" with "+". */
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
