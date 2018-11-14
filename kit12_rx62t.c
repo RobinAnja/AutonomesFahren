@@ -12,7 +12,7 @@ This program supports the following boards:
 * Sensor board Ver. 5
 * Motor drive board Ver. 5
 *
-*Vermessungsdaten �ber das Auto NR 2
+*Data about Car NR 2
 *PDF: 185
 * W=0,143m (Wheelbase)
 * T =0,155m (Tread) (vorder abstand != hintere Abstand)
@@ -29,8 +29,8 @@ This program supports the following boards:
 
 /* Constant settings */
 #define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2050            /* Servo center value NR 2 _zwischen 2050
- 	 	 	 	 	 	 	 	 	 	 	 NR-5 */
+#define SERVO_CENTER    2038            /* Servo center value NR 2 2038 */
+
 #define HANDLE_STEP     13              /* 1 degree value              */
 
 /* Masked value settings X:masked (disabled) O:not masked (enabled)Maske bedeutet welche Sensorn überhaupt abgefragt werden */
@@ -43,6 +43,7 @@ This program supports the following boards:
 #define MASK4_0         0xf0            /* O O O O  X X X X            */
 #define MASK0_4         0x0f            /* X X X X  O O O O            */
 #define MASK4_4         0xff            /* O O O O  O O O O            */
+
 
 /*======================================*/
 /* Prototype declarations               */
@@ -70,7 +71,16 @@ unsigned long   cnt1; // Timer
 int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
-double speedFactor = 0.4;
+//Maximum is 0,7 for secure driving, due to hardware limits
+double speedFactor = 0.7;
+
+
+//This is the maximum angle for NR 2
+int maximumAngle = 45;
+
+//Checker if car is in gap between to lines.
+int wasInGap=0;
+int outGap=0;
 
 
 /***********************************************************************/
@@ -163,12 +173,21 @@ void main(void)
 			if (check_leftline()) {    /* Left half line detection check */
 				pattern = 61;
 				break;
+
 			}
+
+		//	if(check_not_on_track()){  // break if not on track
+		//		motor(0,0);
+		//		break;
+		//	}
+
+
 			switch (sensor_inp(MASK3_3)) {
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
 				motor(100, 100);
+				led_out(0x01);
 				break;
 				//Right Turn
 			case 0x04:
@@ -206,6 +225,7 @@ void main(void)
 				/* Slight amount right of center -> slight turn to left */
 				handle(-15);
 				motor(80, 80);
+				led_out(0x02);
 				break;
 
 			case 0x60:
@@ -277,40 +297,71 @@ void main(void)
 			/* Processing at 1st cross line */
 			led_out(0x2); //LED 3
 			handle(0);
+			// initial break on first line read
 			motor(0, 0);
 			pattern = 22;
 			cnt1 = 0;
 			break;
 
-		case 22:
-			/* Read but ignore 2nd line */
-			//default 100
-			if (cnt1 > 300) {
-				led_out(0x2); //LED 3
+
+			/* Old Case 22
+			 * Read but ignore 2nd line
+			 * default 100
+			 * wert zu hoch bedeutet das er in case 22 hängt obwohl er schon über die abbiegung gefahren ist
+			 * wert zu niederig er erkennt die zweite doppelline als abbiegung und ist zu früh aus case 22 rasu gebrochhen
+			 * 		case 22:
+			if (cnt1 > 50) {
+				led_out(0x1); //LED 2
 				pattern = 23;
 				cnt1 = 0;
 			}
 			break;
+			 */
+		case 22:
+			outGap=0;
+			wasInGap=0;
+
+			while(pattern==22){
+
+				if (check_crossline_gap()){ //check if car is in gap beetween lines
+					wasInGap=1;
+					led_out(0x1);
+				}
+				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
+					outGap =1;
+					led_out(0x2);
+				}
+				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
+					pattern = 23;
+					cnt1 =0;
+					led_out(0x3);
+				}
+			}
+			break;
+
 
 		case 23:
-			/* Trace, crank detection after cross line */
-			if ((sensor_inp(MASK4_4) == 0xf8) ||
-				(sensor_inp(MASK4_4) == 0xfb) ||
-				(sensor_inp(MASK4_4) == 0xf3) ||
-				(sensor_inp(MASK4_4) == 0xf1) ||
-				(sensor_inp(MASK4_4) == 0xf0)
+			/* Trace, crank detection after cross line
+			 *
+			 * 1 - reconised Line
+			 * 0 - not recognised track line
+			 * X - deactive Mask Value
+			 * */
+			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				led_out(0x1); //LED2
-				handle(-50);
+				handle(-45);
+				//standard (10,50)
 				motor(10, 50);
 				pattern = 31;
 				cnt1 = 0;
 				break;
 			}
-			if (sensor_inp(MASK4_4) == 0x1f) {
+			if ((sensor_inp(MASK0_3) == 0x07) // XXXX X111
+				) {
 				/* Right crank determined -> to right crank clearing processing */
-				handle(38);
+				handle(45);
 				motor(50, 10);
 				pattern = 41;
 				cnt1 = 0;
@@ -320,7 +371,7 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-				motor(100, 100);
+				motor(10, 10);//break hard
 				break;
 			case 0x04:
 			case 0x06:
@@ -328,7 +379,7 @@ void main(void)
 			case 0x03:
 				/* Left of center -> turn to right */
 				handle(8);
-				motor(80, 75);
+				motor(10, 5);
 				break;
 			case 0x20:
 			case 0x60:
@@ -336,7 +387,7 @@ void main(void)
 			case 0xc0:
 				/* Right of center -> turn to left */
 				handle(-8);
-				motor(75, 80);
+				motor(5, 10);
 				break;
 			}
 			break;
@@ -438,7 +489,11 @@ void main(void)
 			/* Right lane change end check */
 			//standard ..== 0x3c
 			//Issue #4
-			if (sensor_inp(MASK4_4) == 0x18) {
+			//Issue#10
+			if ((sensor_inp(MASK4_4) == 0x18)||
+			   (sensor_inp(MASK4_4) == 0x0c) ||
+			   (sensor_inp(MASK4_4) == 0x8c))
+			   {
 				led_out(0x0);
 
 				pattern = 11;
@@ -503,8 +558,12 @@ void main(void)
 			/* Left lane change end check */
 			/* Standard 0x3c
 			 * Issue #4
+			 * Issue#10
 			 */
-			if (sensor_inp(MASK4_4) == 0x18) {
+			if ((sensor_inp(MASK4_4) == 0x18) ||
+				(sensor_inp(MASK4_4) == 0xc0) ||
+			   (sensor_inp(MASK4_4) == 0xc8))
+			   {
 				led_out(0x0);
 				pattern = 11;
 				cnt1 = 0;
@@ -647,7 +706,38 @@ unsigned char startbar_get(void)
 
 	return  b;
 }
+/***********************************************************************/
+/* Check if still on track in lab                                     */
+/* Return values: 0: still on track, 1: not on track                      */
+/***********************************************************************/
+int check_not_on_track(void)
+{
+	unsigned char b;
+	int ret;
 
+	ret = 0;
+	b = sensor_inp(MASK4_4);
+	if (b == 0x00) {
+		ret = 1;
+	}
+	return ret;
+}
+/***********************************************************************/
+/* Check Gap beetween Crossline                                      */
+/* Return values: 0: still on crossline, 1: inside the gap                      */
+/***********************************************************************/
+int check_crossline_gap(void)
+{
+	int ret;
+
+	ret = 0;
+	if ((sensor_inp(MASK2_0) == 0x00) ||
+		(sensor_inp(MASK0_2) == 0x00)
+){
+		ret = 1;
+	}
+	return ret;
+}
 /***********************************************************************/
 /* Cross line detection processing                                     */
 /* Return values: 0: no cross line, 1: cross line                      */
@@ -659,7 +749,8 @@ int check_crossline(void)
 
 	ret = 0;
 	b = sensor_inp(MASK3_3);
-	if (b == 0xe7) {
+	if ((b == 0xe7)||
+		(b== 0x66)){
 		ret = 1;
 	}
 	return ret;
@@ -811,10 +902,15 @@ void motor(int accele_l, int accele_r)
 /* Servo steering operation                                            */
 /* Arguments:   servo operation angle: -90 to 90                       */
 /*              -90: 90-degree turn to left, 0: straight,              */
-/*               90: 90-degree turn to right                           */
+/*               90: 90-degree turn to right
+/ *				 Limited to -45 to 45									*/
 /***********************************************************************/
 void handle(int angle)
 {
+	//if used angle is to big
+	if(angle>maximumAngle)angle = maximumAngle;
+	if(angle<-maximumAngle)angle = -maximumAngle;
+
 	/* When the servo move from left to right in reverse, replace "-" with "+". */
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
 }
