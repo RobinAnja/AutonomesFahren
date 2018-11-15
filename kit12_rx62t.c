@@ -52,7 +52,7 @@ void init(void);
 void timer(unsigned long timer_set);
 unsigned char sensor_inp(unsigned char mask);
 unsigned char startbar_get(void);
-int check_crossline(void);
+int check_crossline(void);							  
 int check_rightline(void);
 int check_leftline(void);
 unsigned char dipsw_get(void);
@@ -72,17 +72,25 @@ int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
 //Maximum is 0,7 for secure driving, due to hardware limits
-double speedFactor = 0.7;
-
+double const speedFactor = 0.7;
 
 //This is the maximum angle for NR 2
-int maximumAngle = 45;
+int const maximumAngle = 45;
 
-//Checker if car is in gap between to lines.
-int wasInGap=0;
-int outGap=0;
+//aktuelle Motorzahl, wichtig bei 90 grad kurve
+int aktuellMotor = 100;
 
+//Geschwindigkeit mit der das Auto in die 90 grad kurve einfahren soll
+int const eintrittsGeschwKurve = 10;
 
+//Zeitintervall in dem sich die Motorleistung des auto von 100 auf eintrittsGeschwKurve verringern soll
+int const zeit = 300; //Zeitintervall in dem die Geschw. von 70 auf 20 abbremsen soll
+
+//Wert, um den die aktuelle Motorleistung verringert wird
+int slowDownWert = 0;
+
+//intervall in ms, in dem der slowDownWert erhöht werden soll
+int intervallErhoehen;																							   
 /***********************************************************************/
 /* Main program                                                        */
 /***********************************************************************/
@@ -298,7 +306,7 @@ void main(void)
 			led_out(0x2); //LED 3
 			handle(0);
 			// initial break on first line read
-			motor(0, 0);
+			//motor(0, 0); -> kein abbremsen sondern langsames verringern der geschw
 			pattern = 22;
 			cnt1 = 0;
 			break;
@@ -318,28 +326,41 @@ void main(void)
 			break;
 			 */
 		case 22:
-			outGap=0;
-			wasInGap=0;
-
-			while(pattern==22){
-
-				if (check_crossline_gap()){ //check if car is in gap beetween lines
-					wasInGap=1;
-					led_out(0x1);
-				}
-				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
-					outGap =1;
-					led_out(0x2);
-				}
-				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
-					pattern = 23;
-					cnt1 =0;
-					led_out(0x3);
-				}
-			}
+													if (check_crossline_gap()){ //check if car is in gap beetween lines
+				
+															led_out(0x1);
+															pattern = 220;
+															break;
+														}
+										break;
+		case 220:
+			if (check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
+			   
+																		led_out(0x2);
+	 
+																										
+																		pattern = 221;
+																		break;
+				  
+																	}
+	
 			break;
-
-
+		case 221:
+			if (check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
+																		pattern = 222;
+																		cnt1 =0;
+																		led_out(0x3);
+																		break;
+																	}
+			break;
+		case 222:
+			if (cnt1 > 50) {
+							led_out(0x0); //LED 2
+							pattern = 23;
+							cnt1 = 0;
+							break;
+						}
+						break;
 		case 23:
 			/* Trace, crank detection after cross line
 			 *
@@ -353,7 +374,7 @@ void main(void)
 				led_out(0x1); //LED2
 				handle(-45);
 				//standard (10,50)
-				motor(10, 50);
+				motor(eintrittsGeschwKurve, 50);
 				pattern = 31;
 				cnt1 = 0;
 				break;
@@ -362,7 +383,7 @@ void main(void)
 				) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
-				motor(50, 10);
+				motor(50, eintrittsGeschwKurve);
 				pattern = 41;
 				cnt1 = 0;
 				break;
@@ -371,9 +392,29 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-				motor(10, 10);//break hard
+				if ((aktuellMotor == 100) && (!(cnt1 == 0))){
+					cnt1 == 0;
+				}
+				if (cnt1 <= zeit){
+				intervallErhoehen = zeit/ (100-eintrittsGeschwKurve); //sekundenintervall in dem zahl um 1 steigt; 80 entspricht 70-10, also zahl um die die geschwindigkeit sinken soll von start bis ziel
+				if (!((cnt1 /intervallErhoehen) == slowDownWert)){
+					slowDownWert = cnt1/intervallErhoehen; //zahl entspricht Zahl um die die motorleistung verringert werden soll
+				if ((100 - slowDownWert) >= eintrittsGeschwKurve){
+					aktuellMotor = 100 - slowDownWert;
+					motor(aktuellMotor, aktuellMotor);
+					break;
+				}
+				}
+				else{
+					break;
+				}
+				}
+				led_out(0x3);
+				motor(eintrittsGeschwKurve, eintrittsGeschwKurve);
 				break;
 			case 0x04:
+				handle(aktuellMotor * 0.15); // 0.15 ist die relation zu 100 auf 80 mit lenkung von 15
+				motor((aktuellMotor * 0,8), (aktuellMotor * 0,8));																		  
 			case 0x06:
 			case 0x07:
 			case 0x03:
@@ -382,6 +423,8 @@ void main(void)
 				motor(10, 5);
 				break;
 			case 0x20:
+					handle(-(aktuellMotor * 0.15)); // 0.15 ist die relation zu 100 auf 80 mit lenkung von 15
+					motor((aktuellMotor * 0,8), (aktuellMotor * 0,8));																		 
 			case 0x60:
 			case 0xe0:
 			case 0xc0:
@@ -750,7 +793,8 @@ int check_crossline(void)
 	ret = 0;
 	b = sensor_inp(MASK3_3);
 	if ((b == 0xe7)||
-		(b== 0x66)){
+		(b == 0xe6) ||
+		(b == 0x67)){			   
 		ret = 1;
 	}
 	return ret;
