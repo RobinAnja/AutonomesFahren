@@ -395,7 +395,7 @@ void main(void)
 				}
 				slowDownMotorPower_linear(timeForSlowDown);
 				led_out(0x3);
-				motor(actualMotorPower, aktuallMotor);
+				motor(actualMotorPower, actualMotorPower);
 				break;
 			case 0x04:
 				handle(actualMotorPower * 0.15); // 0.15 ist die relation zu 100 auf 80 mit lenkung von 15
