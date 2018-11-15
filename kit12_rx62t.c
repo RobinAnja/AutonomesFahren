@@ -45,6 +45,7 @@ This program supports the following boards:
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
 
+
 /*======================================*/
 /* Prototype declarations               */
 /*======================================*/
@@ -53,6 +54,7 @@ void timer(unsigned long timer_set);
 unsigned char sensor_inp(unsigned char mask);
 unsigned char startbar_get(void);
 int check_crossline(void);
+int check_crossline_gap(void); // own methode
 int check_rightline(void);
 int check_leftline(void);
 unsigned char dipsw_get(void);
@@ -72,7 +74,7 @@ int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
 //Maximum is 0,7 for secure driving, due to hardware limits
-double speedFactor = 0.7;
+double speedFactor = 0.45;
 
 
 //This is the maximum angle for NR 2
@@ -295,7 +297,7 @@ void main(void)
 
 		case 21:
 			/* Processing at 1st cross line */
-			led_out(0x2); //LED 3
+			led_out(0x2); //LED 2
 			handle(0);
 			// initial break on first line read
 			motor(0, 0);
@@ -323,18 +325,17 @@ void main(void)
 
 			while(pattern==22){
 
-				if (check_crossline_gap()){ //check if car is in gap beetween lines
+				if (!wasInGap && check_crossline_gap()){ //check if car is in gap beetween lines
 					wasInGap=1;
-					led_out(0x1);
+					led_out(0x1); //LED 3
 				}
-				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
+				if (wasInGap && check_crossline()) { //check if car was in Gap and if we pass the 2nd Crossline
 					outGap =1;
-					led_out(0x2);
+					led_out(0x2); //LED 2
 				}
 				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
 					pattern = 23;
-					cnt1 =0;
-					led_out(0x3);
+					led_out(0x3); //LED 2+3
 				}
 			}
 			break;
@@ -350,7 +351,7 @@ void main(void)
 			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
-				led_out(0x1); //LED2
+				led_out(0x1); //LED3
 				handle(-45);
 				//standard (10,50)
 				motor(10, 50);
@@ -728,12 +729,9 @@ int check_not_on_track(void)
 /***********************************************************************/
 int check_crossline_gap(void)
 {
-	int ret;
-
-	ret = 0;
-	if ((sensor_inp(MASK2_0) == 0x00) ||
-		(sensor_inp(MASK0_2) == 0x00)
-){
+	int ret=0;
+	if ((sensor_inp(MASK2_0) == 0x00) || (sensor_inp(MASK0_2) == 0x00))
+	{
 		ret = 1;
 	}
 	return ret;
@@ -744,13 +742,9 @@ int check_crossline_gap(void)
 /***********************************************************************/
 int check_crossline(void)
 {
-	unsigned char b;
-	int ret;
-
-	ret = 0;
-	b = sensor_inp(MASK3_3);
-	if ((b == 0xe7)||
-		(b== 0x66)){
+	int ret=0;
+	if (sensor_inp(MASK2_2) == 0x66)
+	{
 		ret = 1;
 	}
 	return ret;
