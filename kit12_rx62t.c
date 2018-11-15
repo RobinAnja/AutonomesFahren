@@ -44,6 +44,12 @@ This program supports the following boards:
 #define MASK0_4         0x0f            /* X X X X  O O O O            */
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
+/*Own MASK declarations */
+#define MASK1_0			0x80			/* O X X X  X X X X				*/
+#define MASK0_1			0x01			/* X X X X  X X X O				*/
+#define MASK2_0_Outer	0xc0			/* O O X X  X X X X				*/
+#define MASK0_2_Outer	0x03			/* X X X X  X X O O				*/
+
 
 /*======================================*/
 /* Prototype declarations               */
