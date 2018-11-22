@@ -44,12 +44,6 @@ This program supports the following boards:
 #define MASK0_4         0x0f            /* X X X X  O O O O            */
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
-/*Own MASK declarations */
-#define MASK1_0			0x80			/* O X X X  X X X X				*/
-#define MASK0_1			0x01			/* X X X X  X X X O				*/
-#define MASK2_0_Outer	0xc0			/* O O X X  X X X X				*/
-#define MASK0_2_Outer	0x03			/* X X X X  X X O O				*/
-
 
 /*======================================*/
 /* Prototype declarations               */
@@ -59,7 +53,6 @@ void timer(unsigned long timer_set);
 unsigned char sensor_inp(unsigned char mask);
 unsigned char startbar_get(void);
 int check_crossline(void);
-int check_crossline_gap(void);
 int check_rightline(void);
 int check_leftline(void);
 unsigned char dipsw_get(void);
@@ -69,7 +62,6 @@ void led_out_m(unsigned char led);
 void led_out(unsigned char led);
 void motor(int accele_l, int accele_r);
 void handle(int angle);
-void slowDownMotorPower_linear(int time);
 
 /*======================================*/
 /* Global variable declarations         */
@@ -80,25 +72,16 @@ int             pattern;
 
 //speedFactor ignores DIP Settings in motor()
 //Maximum is 0,7 for secure driving, due to hardware limits
-double const speedFactor = 0.7;
+double speedFactor = 0.7;
+
 
 //This is the maximum angle for NR 2
-int const maximumAngle = 45;
+int maximumAngle = 45;
 
-//aktuelle Motorzahl, wichtig bei 90 grad kurve
-int actualMotorPower = 100;
+//Checker if car is in gap between to lines.
+int wasInGap=0;
+int outGap=0;
 
-//Geschwindigkeit mit der das Auto in die 90 grad kurve einfahren soll
-int const curveEntranceMotorPower = 10;
-
-//Zeitintervall in dem sich die Motorleistung des auto von 100 auf curveEntranceMotorPower verringern soll
-int const timeForSlowDown = 300; //Zeitintervall in dem die Geschw. von 70 auf 20 abbremsen soll
-
-//Wert, um den die aktuelle Motorleistung verringert wird
-int slowDownValue = 0;
-
-//intervall in ms, in dem der slowDownValue erhöht werden soll
-//int intervallErhoehen;
 
 /***********************************************************************/
 /* Main program                                                        */
@@ -315,7 +298,7 @@ void main(void)
 			led_out(0x2); //LED 3
 			handle(0);
 			// initial break on first line read
-			//motor(0, 0);
+			motor(0, 0);
 			pattern = 22;
 			cnt1 = 0;
 			break;
@@ -335,36 +318,28 @@ void main(void)
 			break;
 			 */
 		case 22:
+			outGap=0;
+			wasInGap=0;
 
-										if (check_crossline_gap()){ //check if car is in gap beetween lines
-															led_out(0x1);
-															pattern = 220;
-															break;
-														}
-										break;
-		case 220:
-			if (check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
-																		led_out(0x2);
-																		pattern = 221;
-																		break;
-																	}
+			while(pattern==22){
+
+				if (check_crossline_gap()){ //check if car is in gap beetween lines
+					wasInGap=1;
+					led_out(0x1);
+				}
+				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
+					outGap =1;
+					led_out(0x2);
+				}
+				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
+					pattern = 23;
+					cnt1 =0;
+					led_out(0x3);
+				}
+			}
 			break;
-		case 221:
-			if (check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
-																		pattern = 222;
-																		cnt1 =0;
-																		led_out(0x3);
-																		break;
-																	}
-			break;
-		case 222:
-			if (cnt1 > 50) {
-							led_out(0x0); //LED 2
-							pattern = 23;
-							cnt1 = 0;
-							break;
-						}
-						break;
+
+
 		case 23:
 			/* Trace, crank detection after cross line
 			 *
@@ -378,7 +353,7 @@ void main(void)
 				led_out(0x1); //LED2
 				handle(-45);
 				//standard (10,50)
-				motor(curveEntranceMotorPower, 50);
+				motor(10, 50);
 				pattern = 31;
 				cnt1 = 0;
 				break;
@@ -387,7 +362,7 @@ void main(void)
 				) {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
-				motor(50, curveEntranceMotorPower);
+				motor(50, 10);
 				pattern = 41;
 				cnt1 = 0;
 				break;
@@ -396,16 +371,9 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-				if ((actualMotorPower == 100) && (!(cnt1 == 0))){
-					cnt1 == 0;
-				}
-				slowDownMotorPower_linear(timeForSlowDown);
-				led_out(0x3);
-				motor(actualMotorPower, actualMotorPower);
+				motor(10, 10);//break hard
 				break;
 			case 0x04:
-				handle(actualMotorPower * 0.15); // 0.15 ist die relation zu 100 auf 80 mit lenkung von 15
-				motor((actualMotorPower * 0,8), (actualMotorPower * 0,8));
 			case 0x06:
 			case 0x07:
 			case 0x03:
@@ -414,8 +382,6 @@ void main(void)
 				motor(10, 5);
 				break;
 			case 0x20:
-				handle(-(actualMotorPower * 0.15)); // 0.15 ist die relation zu 100 auf 80 mit lenkung von 15
-				motor((actualMotorPower * 0,8), (actualMotorPower * 0,8));
 			case 0x60:
 			case 0xe0:
 			case 0xc0:
@@ -784,8 +750,7 @@ int check_crossline(void)
 	ret = 0;
 	b = sensor_inp(MASK3_3);
 	if ((b == 0xe7)||
-		(b == 0xe6) ||
-		(b == 0x67)){
+		(b== 0x66)){
 		ret = 1;
 	}
 	return ret;
@@ -948,20 +913,6 @@ void handle(int angle)
 
 	/* When the servo move from left to right in reverse, replace "-" with "+". */
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
-}
-
-void slowDownMotorPower_linear(int time)
-{
-	if (cnt1 <= time){
-				int timeBetweenEachSlowDownStep = time/(100-curveEntranceMotorPower); //sekundenintervall in dem zahl um 1 steigt; 80 entspricht 70-10, also zahl um die die geschwindigkeit sinken soll von start bis ziel
-					slowDownValue = cnt1/timeBetweenEachSlowDownStep; //zahl entspricht Zahl um die die motorleistung verringert werden soll
-				if ((100 - slowDownValue) >= curveEntranceMotorPower){
-					actualMotorPower = 100 - slowDownValue;
-				}
-				else{
-					actualMotorPower = curveEntranceMotorPower;
-				}
-				}
 }
 
 /***********************************************************************/
