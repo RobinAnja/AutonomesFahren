@@ -318,26 +318,37 @@ void main(void)
 			break;
 			 */
 		case 22:
-			outGap=0;
-			wasInGap=0;
-
-			while(pattern==22){
-
-				if (check_crossline_gap()){ //check if car is in gap beetween lines
-					wasInGap=1;
-					led_out(0x1);
-				}
-				if (wasInGap && check_crossline()) { //check if gap car was in Gap and if we pass the 2nd Crossline
-					outGap =1;
-					led_out(0x2);
-				}
-				if (outGap && check_crossline_gap()){ // check if we passed the 2nd crossline, after passing the gap
-					pattern = 23;
-					cnt1 =0;
-					led_out(0x3);
-				}
+			/* check if car is in gap beetween lines */
+			if (check_crossline_gap()) { 
+				led_out(0x1);
+				pattern = 220;
+				break;
 			}
-			break;
+										
+		case 220:
+			/* check if gap car was in Gap and if we pass the 2nd Crossline */
+			if (check_crossline()) { 
+				led_out(0x2);
+				pattern = 221;
+				break;
+			}
+			
+		case 221:		
+			/* check if we passed the 2nd crossline, after passing the gap */
+			if (check_crossline_gap()) { 
+				pattern = 222;
+				cnt1 = 0;
+				led_out(0x3);
+				break;
+			}
+			
+		case 222:
+			if (cnt1 > 50) {
+				led_out(0x0); //LED 2
+				pattern = 23;
+				cnt1 = 0;
+				break;
+			}
 
 
 		case 23:
