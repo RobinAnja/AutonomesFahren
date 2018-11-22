@@ -324,7 +324,7 @@ void main(void)
 				pattern = 220;
 				break;
 			}
-										
+			break;
 		case 220:
 			/* check if gap car was in Gap and if we pass the 2nd Crossline */
 			if (check_crossline()) { 
@@ -332,6 +332,7 @@ void main(void)
 				pattern = 221;
 				break;
 			}
+			break;
 			
 		case 221:		
 			/* check if we passed the 2nd crossline, after passing the gap */
@@ -341,6 +342,7 @@ void main(void)
 				led_out(0x3);
 				break;
 			}
+			break;
 			
 		case 222:
 			if (cnt1 > 50) {
@@ -349,6 +351,7 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
+			break;
 
 
 		case 23:
