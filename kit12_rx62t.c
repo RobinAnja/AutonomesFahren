@@ -104,6 +104,7 @@ unsigned long cnt0;
 unsigned long cnt1;			// Timer
 int pattern;
 int actualMotorPower = 100;	// important for 90° curve 
+																																
 
 /***********************************************************************/
 /* Main program                                                        */
@@ -370,6 +371,7 @@ void main(void)
 		case 22:
 			/* check if car is in gap beetween lines */
 			if (check_crossline_gap()) {
+						 
 				pattern = 220;
 
 			}
@@ -383,7 +385,10 @@ void main(void)
 		case 220:
 			/* check if gap car was in Gap and if we pass the 2nd Crossline */
 			if (check_crossline()) { 
+						 
 				pattern = 221;
+		  
+	
 
 			}
 			break;
@@ -397,11 +402,13 @@ void main(void)
 				pattern = 222;
 				cnt1 = 0;
 				//led_out(0x3);
+		  
 			}
 			break;
 			
 		case 222:
 			if (cnt1 > 50) {
+						   
 				pattern = 23;
 				cnt1 = 0;
 				while(1){
@@ -450,6 +457,7 @@ void main(void)
 				if ((actualMotorPower == 100) && (!(cnt1 == 0))){
 					cnt1 == 0;
         }
+
 				slowDownMotorPower_linear(TIME_FOR_SLOW_DOWN_CURVE);
 				led_out(0x3);
 				motor(actualMotorPower, actualMotorPower);
@@ -536,11 +544,16 @@ void main(void)
 
 		case 51:
 			/* Processing at 1st right half line detection */
-			led_out(0x1);	//LED 3
-			handle(0);
-			motor(0, 0);
-			pattern = 52;
-			cnt1 = 0;		// Clear Timer
+			if(check_crossline()){
+				pattern = 21;
+			}
+			else if(check_crossline_gap()){
+				led_out(0x1);	//LED 3
+				handle(0);
+				motor(0, 0);
+				pattern = 52;
+				cnt1 = 0;		// Clear Timer
+			}
 			break;
 
 		case 52: 
@@ -862,12 +875,16 @@ int check_crossline_gap(void) {
 /***********************************************************************/
 int check_crossline(void)
 {
+		 
+		 
 	if ((sensor_inp(MASK4_4) == 0xff)||
 		(sensor_inp(MASK4_4) == 0x7e)||
 		(sensor_inp(MASK4_4) == 0x3c))
+							
 		{
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -879,9 +896,14 @@ int check_crossline(void)
 /***********************************************************************/
 int check_rightline(void)
 {
+		 
+		 
 	if (sensor_inp(MASK4_4) == 0x1f) {
 		return 1;
+				 
+		  
 	}
+
 	return 0;
 }
 
@@ -893,10 +915,14 @@ int check_rightline(void)
 /***********************************************************************/
 int check_leftline(void)
 {
+		 
+		 
+						 
 
 	if (sensor_inp(MASK4_4) == 0xf8) {
 		return 1;
 	}
+
 	return 0;
 }
 
@@ -983,8 +1009,8 @@ void motor(int accele_l, int accele_r){
 	accele_r = accele_r * sw_data / 20; */
 
 	/* use speedFactor instead */
-	accele_l = accele_l * SPEED_FACTOR;
-	accele_r = accele_r * SPEED_FACTOR;
+	accele_l = accele_l * speedFactor;
+	accele_r = accele_r * speedFactor;
 
 
 	/* Left Motor Control */
