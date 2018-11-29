@@ -37,10 +37,9 @@ This program supports the following boards:
 #define PWM_CYCLE       24575           // Motor PWM period (16ms)     
 #define SERVO_CENTER    2038            // Servo center value NR 2 2038 
 #define HANDLE_STEP     13              // 1 degree value              
-#define MAXIMUM_ANGLE	45				// This is the maximum angle for NR 2 
-#define SPEED_FACTOR	0.7				// SPEED_FACTOR ignores DIP Settings in motor(); Maximum is 0,7 for secure driving, due to hardware limit
+#define MAXIMUM_ANGLE	45				        // This is the maximum angle for NR 2 
 #define CURVE_ENTRANCE_MOTOR_POWER	10	// motor power for smoothly driving through the 90° curve 
-#define TIME_FOR_SLOW_DOWN_CURVE	300	// time span in which the car should slow down from the actual motor power to the CURVE_ENTRANCE_MOTOR_POWER 
+#define TIME_FOR_SLOW_DOWN_CURVE	300	  // time span in which the car should slow down from the actual motor power to the CURVE_ENTRANCE_MOTOR_POWER 
 
 /* Masked value settings X:masked (disabled) O:not masked (enabled)Maske bedeutet welche Sensorn überhaupt abgefragt werden */
 #define MASK2_2         0x66            /* X O O X  X O O X            */
@@ -53,6 +52,15 @@ This program supports the following boards:
 #define MASK0_4         0x0f            /* X X X X  O O O O            */
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
+/*Own MASK declarations */
+#define MASK1_0				0x80			/* O X X X  X X X X				*/
+#define MASK0_1				0x01			/* X X X X  X X X O				*/
+#define MASK2_0_Outer		0xc0			/* O O X X  X X X X				*/
+#define MASK0_2_Outer		0x03			/* X X X X  X X O O				*/
+
+#define MASK1_1_Inner		0x24			/* X X 0 X  X 0 X X				*/
+#define MASK1_1_Middle		0x42			/* X 0 X X  X X 0 X				*/
+#define MASK1_1_Outer		0x81			/* 0 X X X  X X X 0				*/
 
 /*======================================*/
 /* Prototype declarations               */
@@ -77,6 +85,21 @@ void slowDownMotorPower_linear(int time);
 /*======================================*/
 /* Global variable declarations         */
 /*======================================*/
+//speedFactor ignores DIP Settings in motor()
+//Maximum is 0,7 for secure driving, due to hardware limits
+double speedFactor = 0.7;
+
+//Current Speed of car in m/s
+// 2 m/s ist so das maximum was der wagen auf mindesetns 1,5 m beschleunigen kann
+double measuredSpeed=1.4;
+
+//Distance beetwen Beginning of First Crossline to End of secound Crossline in mm
+//Programm Explantion Manual Page 125
+double gapDistance = 90;
+
+//Testtimer
+int crankTimer=100;
+
 unsigned long cnt0;
 unsigned long cnt1;			// Timer
 int pattern;
@@ -182,6 +205,19 @@ void main(void)
 			/* Right half line detection check */
 			if (check_rightline()) {   
 				pattern = 51;
+				while(1){
+					motor(0,0);
+
+					if (cnt1 < 50) {           /* LED flashing processing     */
+								led_out(0x1);
+							}
+							else if (cnt1 < 100) {
+								led_out(0x2);
+							}
+							else {
+								cnt1 = 0;
+							}
+				}
 				break;
 			}
 
@@ -207,6 +243,7 @@ void main(void)
 				led_out(0x01);
 				break;
 
+				//Right Turn
 			case 0x04:
 				/* Slight amount left of center -> slight turn to right */
 				handle(15);		//Default 15
@@ -319,47 +356,66 @@ void main(void)
 			}
 			
 		case 21:
+			//start Timer
+			cnt0=0;
 			/* Processing at 1st cross line */
 			led_out(0x2); //LED 3
 			handle(0);
+			// initial break on first line read
+			motor(20, 20);
 			pattern = 22;
 			cnt1 = 0;
 			break;
-
+			 */
 		case 22:
 			/* check if car is in gap beetween lines */
-			if (check_crossline_gap()) { 
-				led_out(0x1);
+			if (check_crossline_gap()) {
 				pattern = 220;
-				break;
+
 			}
-										
+			//Falls er in diesen Fall hängt, soll er nach 500ms die prüfung überspringen
+			else if(cnt1>500){
+				pattern=23;
+				led_out(0x0); // LED aus
+			}
+			break;
+
 		case 220:
 			/* check if gap car was in Gap and if we pass the 2nd Crossline */
 			if (check_crossline()) { 
-				led_out(0x2);
 				pattern = 221;
-				break;
+
 			}
+			break;
 			
 		case 221:		
 			/* check if we passed the 2nd crossline, after passing the gap */
-			if (check_crossline_gap()) { 
+			if (check_crossline_gap()) {
+
+				//measurement of Speed
+				measuredSpeed = gapDistance/cnt0;
 				pattern = 222;
 				cnt1 = 0;
-				led_out(0x3);
-				break;
+				//led_out(0x3);
 			}
+			break;
 			
 		case 222:
 			if (cnt1 > 50) {
-				led_out(0x0); //LED 2
 				pattern = 23;
 				cnt1 = 0;
-				break;
+				while(1){
+					motor(0,0);
+					led_out(0x3); //LED 2+3
+
+				}
 			}
-						
+			break;
+
 		case 23:
+			while(1){
+				motor(0,0);
+			}
 			/* Trace, crank detection after cross line
 			 *
 			 * 1 - reconised Line
@@ -390,12 +446,11 @@ void main(void)
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
-
+				motor(50, 50);//break hard
 				if ((actualMotorPower == 100) && (!(cnt1 == 0))){
 					cnt1 == 0;
-				}
-
-				slowDownMotorPower_linear(timeForSlowDown);
+        }
+				slowDownMotorPower_linear(TIME_FOR_SLOW_DOWN_CURVE);
 				led_out(0x3);
 				motor(actualMotorPower, actualMotorPower);
 				break;
@@ -410,7 +465,7 @@ void main(void)
 			case 0x03:
 				/* Left of center -> turn to right */
 				handle(8);
-				motor(10, 5);
+				motor(50, 35);
 				break;
 
 			case 0x20:
@@ -423,7 +478,7 @@ void main(void)
 			case 0xc0:
 				/* Right of center -> turn to left */
 				handle(-8);
-				motor(5, 10);
+				motor(35, 50);
 				break;
 
 			default:
@@ -431,13 +486,24 @@ void main(void)
 			}
 
 		case 31:
-			/* Left crank clearing processing ? wait until stable */
+			/* Left crank clearing processing ? wait until stable
+			 * Right crank patterm 41
 			if (cnt1 > 200) {
 				pattern = 32;
 				cnt1 = 0;
 			}
 
 			break;
+			*/
+
+			crankTimer=measuredSpeed*110;
+
+			if(cnt1 > crankTimer){
+				pattern =32;
+				cnt1=0;
+			}
+			break;
+
 
 		case 32:
 			/* Left crank clearing processing ? check end of turn */
@@ -794,19 +860,15 @@ int check_crossline_gap(void) {
 /* Return values:				                                       */
 /*		0: no cross line, 1: cross line								   */
 /***********************************************************************/
-int check_crossline(void) {
-	unsigned char b;
-	int ret;
-	ret = 0;
-	b = sensor_inp(MASK3_3);
-
-	if ((b == 0xe7)||
-		(b == 0xe6) ||
-		(b == 0x67)) {
-		ret = 1;
+int check_crossline(void)
+{
+	if ((sensor_inp(MASK4_4) == 0xff)||
+		(sensor_inp(MASK4_4) == 0x7e)||
+		(sensor_inp(MASK4_4) == 0x3c))
+		{
+		return 1;
 	}
-
-	return ret;
+	return 0;
 }
 
 /***********************************************************************/
@@ -815,17 +877,12 @@ int check_crossline(void) {
 /* Return values:				                                       */
 /*		0: not detected, 1: detected								   */
 /***********************************************************************/
-int check_rightline(void) {
-	unsigned char b;
-	int ret;
-	ret = 0;
-	b = sensor_inp(MASK4_4);
-
-	if (b == 0x1f) {
-		ret = 1;
+int check_rightline(void)
+{
+	if (sensor_inp(MASK4_4) == 0x1f) {
+		return 1;
 	}
-
-	return ret;
+	return 0;
 }
 
 /***********************************************************************/
@@ -834,17 +891,13 @@ int check_rightline(void) {
 /* Return values:				                                       */
 /*		0: not detected, 1: detected								   */
 /***********************************************************************/
-int check_leftline(void) {
-	unsigned char b;
-	int ret;
-	ret = 0;
-	b = sensor_inp(MASK4_4);
+int check_leftline(void)
+{
 
-	if (b == 0xf8) {
-		ret = 1;
+	if (sensor_inp(MASK4_4) == 0xf8) {
+		return 1;
 	}
-
-	return ret;
+	return 0;
 }
 
 /***********************************************************************/
