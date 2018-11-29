@@ -16,7 +16,13 @@ This program supports the following boards:
 *PDF: 185
 * W=0,143m (Wheelbase)
 * T =0,155m (Tread) (vorder abstand != hintere Abstand)
+*
+* Notation rules:
+*  /* For comments about a block 
+* // For comments about one line/ parameterdescriptions
 **/
+
+
 
 /*======================================*/
 /* Include                              */
@@ -28,10 +34,12 @@ This program supports the following boards:
 /*======================================*/
 
 /* Constant settings */
-#define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2038            /* Servo center value NR 2 2038 */
-
-#define HANDLE_STEP     13              /* 1 degree value      NR default 13        */
+#define PWM_CYCLE       24575           // Motor PWM period (16ms)     
+#define SERVO_CENTER    2038            // Servo center value NR 2 2038 
+#define HANDLE_STEP     13              // 1 degree value              
+#define MAXIMUM_ANGLE	45				        // This is the maximum angle for NR 2 
+#define CURVE_ENTRANCE_MOTOR_POWER	10	// motor power for smoothly driving through the 90° curve 
+#define TIME_FOR_SLOW_DOWN_CURVE	300	  // time span in which the car should slow down from the actual motor power to the CURVE_ENTRANCE_MOTOR_POWER 
 
 /* Masked value settings X:masked (disabled) O:not masked (enabled)Maske bedeutet welche Sensorn überhaupt abgefragt werden */
 #define MASK2_2         0x66            /* X O O X  X O O X            */
@@ -62,6 +70,7 @@ void timer(unsigned long timer_set);
 unsigned char sensor_inp(unsigned char mask);
 unsigned char startbar_get(void);
 int check_crossline(void);
+int check_crossline_gap(void);
 int check_rightline(void);
 int check_leftline(void);
 unsigned char dipsw_get(void);
@@ -71,22 +80,14 @@ void led_out_m(unsigned char led);
 void led_out(unsigned char led);
 void motor(int accele_l, int accele_r);
 void handle(int angle);
+void slowDownMotorPower_linear(int time);
 
 /*======================================*/
 /* Global variable declarations         */
 /*======================================*/
-unsigned long   cnt0; // Timer for Speed Measurement
-unsigned long   cnt1; // Timer
-
-int             pattern;
-
 //speedFactor ignores DIP Settings in motor()
 //Maximum is 0,7 for secure driving, due to hardware limits
 double speedFactor = 0.7;
-
-
-//This is the maximum angle for NR 2
-int maximumAngle = 45;
 
 //Current Speed of car in m/s
 // 2 m/s ist so das maximum was der wagen auf mindesetns 1,5 m beschleunigen kann
@@ -99,6 +100,10 @@ double gapDistance = 90;
 //Testtimer
 int crankTimer=100;
 
+unsigned long cnt0;
+unsigned long cnt1;			// Timer
+int pattern;
+int actualMotorPower = 100;	// important for 90° curve 
 
 /***********************************************************************/
 /* Main program                                                        */
@@ -124,6 +129,9 @@ void main(void)
 			13: check end of large turn to left
 			21: processing at 1st cross line
 			22: read but ignore 2nd time
+			220: check second crossline
+			221: check normal line after the crosslines
+			222: short break to avoid wrong detection	
 			23: trace, crank detection after cross line
 			31: left crank clearing processing ? wait until stable
 			32: left crank clearing processing ? check end of turn
@@ -140,13 +148,16 @@ void main(void)
 			****************************************************************/
 
 		case 0:
+
 			/* Wait for switch input */
 			if (pushsw_get()) {
 				pattern = 1;
 				cnt1 = 0;
 				break;
 			}
-			if (cnt1 < 100) {          /* LED flashing processing     */
+
+			/* LED flashing processing     */
+			if (cnt1 < 100) {          
 				led_out(0x1);
 			}
 			else if (cnt1 < 200) {
@@ -155,9 +166,11 @@ void main(void)
 			else {
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 1:
+
 			/* Check if start bar is open */
 			if (!startbar_get()) {
 				/* Start!! */
@@ -166,7 +179,9 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
-			if (cnt1 < 50) {           /* LED flashing processing     */
+
+			/* LED flashing processing     */
+			if (cnt1 < 50) {         
 				led_out(0x1);
 			}
 			else if (cnt1 < 100) {
@@ -175,15 +190,20 @@ void main(void)
 			else {
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 11:
 			/* Normal trace */
-			if (check_crossline()) {   /* Cross line check            */
+
+			/* Cross line check */
+			if (check_crossline()) {   
 				pattern = 21;
 				break;
 			}
-			if (check_rightline()) {   /* Right half line detection check */
+
+			/* Right half line detection check */
+			if (check_rightline()) {   
 				pattern = 51;
 				while(1){
 					motor(0,0);
@@ -200,7 +220,9 @@ void main(void)
 				}
 				break;
 			}
-			if (check_leftline()) {    /* Left half line detection check */
+
+			 /* Left half line detection check */
+			if (check_leftline()) {  
 				pattern = 61;
 				break;
 
@@ -213,6 +235,7 @@ void main(void)
 
 
 			switch (sensor_inp(MASK3_3)) {
+
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
@@ -223,25 +246,20 @@ void main(void)
 				//Right Turn
 			case 0x04:
 				/* Slight amount left of center -> slight turn to right */
-				//Default 15
-				handle(15);
+				handle(15);		//Default 15
 				motor(80, 80);
 				break;
 
 			case 0x06:
 				/* Small amount left of center -> small turn to right */
-				//Default 30
-				handle(40);
-				// Default 20, 16,75
-				motor(60, 40);
+				handle(40);		//Default 30
+				motor(60, 40);	// Default 20, 16,75
 				break;
 
 			case 0x07:
-				/* Medium amount left of center -> medium turn to right */
-				//Default 45
-				handle(55);
-				//Default 12,5 9,5
-				motor(25, 15);
+				/* Medium amount left of center -> medium turn to right */			
+				handle(55);		//Default 45
+				motor(25, 15);	//Default 12,5 9,5
 				pattern = 12;
 				break;
 
@@ -251,7 +269,6 @@ void main(void)
 				motor(7.5, 4.75);
 				break;
 
-				//Left Turn
 			case 0x20:
 				/* Slight amount right of center -> slight turn to left */
 				handle(-15);
@@ -277,53 +294,67 @@ void main(void)
 				handle(-60);
 				motor(4.75, 7.5);
 				break;
+
 			case 0x1:
 				handle(-80);
 				motor(4, 7);
+				break;
 
 			default:
 				break;
 			}
-			break;
 
 		case 12:
 			/* Check end of large turn to right */
-			if (check_crossline()) {   /* Cross line check during large turn */
+			if (check_crossline()) {  
+				/* Cross line check during large turn */
 				pattern = 21;
 				break;
 			}
-			if (check_rightline()) {   /* Right half line detection check */
+
+			if (check_rightline()) {   
+				/* Right half line detection check */
 				pattern = 51;
 				break;
 			}
-			if (check_leftline()) {    /* Left half line detection check */
+
+			if (check_leftline()) {    
+				/* Left half line detection check */
 				pattern = 61;
 				break;
 			}
+
 			if (sensor_inp(MASK3_3) == 0x06) {
 				pattern = 11;
-			}
-			break;
+				break;
+			}		
 
 		case 13:
+
 			/* Check end of large turn to left */
-			if (check_crossline()) {   /* Cross line check during large turn */
+			if (check_crossline()) {   
+				/* Cross line check during large turn */
 				pattern = 21;
 				break;
 			}
-			if (check_rightline()) {   /* Right half line detection check */
+
+			if (check_rightline()) {   
+				/* Right half line detection check */
 				pattern = 51;
 				break;
 			}
-			if (check_leftline()) {    /* Left half line detection check */
+
+			if (check_leftline()) {    
+				/* Left half line detection check */
 				pattern = 61;
 				break;
 			}
+
 			if (sensor_inp(MASK3_3) == 0x60) {
 				pattern = 11;
+				break;
 			}
-			break;
-
+			
 		case 21:
 			//start Timer
 			cnt0=0;
@@ -334,20 +365,6 @@ void main(void)
 			motor(20, 20);
 			pattern = 22;
 			cnt1 = 0;
-			break;
-
-
-			/* Old Case 22
-			 * Read but ignore 2nd line
-			 * default 100
-			 * wert zu hoch bedeutet das er in case 22 hängt obwohl er schon über die abbiegung gefahren ist
-			 * wert zu niederig er erkennt die zweite doppelline als abbiegung und ist zu früh aus case 22 rasu gebrochhen
-			 * 		case 22:
-			if (cnt1 > 50) {
-				led_out(0x1); //LED 2
-				pattern = 23;
-				cnt1 = 0;
-			}
 			break;
 			 */
 		case 22:
@@ -385,7 +402,6 @@ void main(void)
 			
 		case 222:
 			if (cnt1 > 50) {
-
 				pattern = 23;
 				cnt1 = 0;
 				while(1){
@@ -395,7 +411,6 @@ void main(void)
 				}
 			}
 			break;
-
 
 		case 23:
 			while(1){
@@ -407,33 +422,44 @@ void main(void)
 			 * 0 - not recognised track line
 			 * X - deactive Mask Value
 			 * */
-			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
-				) {
+			if ((sensor_inp(MASK3_0) == 0xe0)) { // 111X XXXX				
 				/* Left crank determined -> to left crank clearing processing */
-				led_out(0x1); //LED2
-				handle(-45);
-				//standard (10,50)
-				motor(10, 50);
+				led_out(0x1);	//LED2
+				handle(-45);	//standard (10,50)			
+				motor(CURVE_ENTRANCE_MOTOR_POWER, 50);
 				pattern = 31;
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK0_3) == 0x07) // XXXX X111
-				) {
+
+			if ((sensor_inp(MASK0_3) == 0x07)) { // XXXX X111			
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
-				motor(50, 10);
+				motor(50, CURVE_ENTRANCE_MOTOR_POWER);
 				pattern = 41;
 				cnt1 = 0;
 				break;
 			}
+
 			switch (sensor_inp(MASK3_3)) {
+
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
 				motor(50, 50);//break hard
+				if ((actualMotorPower == 100) && (!(cnt1 == 0))){
+					cnt1 == 0;
+        }
+				slowDownMotorPower_linear(TIME_FOR_SLOW_DOWN_CURVE);
+				led_out(0x3);
+				motor(actualMotorPower, actualMotorPower);
 				break;
+
 			case 0x04:
+				handle(actualMotorPower * 0.15);		// 0.15 in relation to 100 and 80 with handle 15 in pattern 11
+				motor((actualMotorPower * 0,8), (actualMotorPower * 0,8));
+				break;
+
 			case 0x06:
 			case 0x07:
 			case 0x03:
@@ -441,7 +467,12 @@ void main(void)
 				handle(8);
 				motor(50, 35);
 				break;
+
 			case 0x20:
+				handle(-(actualMotorPower * 0.15));		/// 0.15 in relation to 100 and 80 with handle 15 in pattern 11
+				motor((actualMotorPower * 0,8), (actualMotorPower * 0,8));
+				break;
+
 			case 0x60:
 			case 0xe0:
 			case 0xc0:
@@ -449,8 +480,10 @@ void main(void)
 				handle(-8);
 				motor(35, 50);
 				break;
+
+			default:
+				break;
 			}
-			break;
 
 		case 31:
 			/* Left crank clearing processing ? wait until stable
@@ -459,6 +492,7 @@ void main(void)
 				pattern = 32;
 				cnt1 = 0;
 			}
+
 			break;
 			*/
 
@@ -478,6 +512,7 @@ void main(void)
 				pattern = 11;
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 41:
@@ -486,6 +521,7 @@ void main(void)
 				pattern = 42;
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 42:
@@ -495,46 +531,47 @@ void main(void)
 				pattern = 11;
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 51:
 			/* Processing at 1st right half line detection */
-			//standard 2
-			led_out(0x1); //LED 3
-
-
+			led_out(0x1);	//LED 3
 			handle(0);
 			motor(0, 0);
 			pattern = 52;
-			cnt1 = 0; // Clear Timer
+			cnt1 = 0;		// Clear Timer
 			break;
 
-		case 52: // wait 100ms and go to next pattern [PDF 142]
+		case 52: 
+			/* wait 100ms and go to next pattern [PDF 142] */
 			/* Read but ignore 2nd time */
-			if (cnt1 > 100) { //wait 100ms
-				led_out(0x2); //LED 2
-
+			if (cnt1 > 100) {	//wait 100ms
+				led_out(0x2);	//LED 2
 				pattern = 53;
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 53:
 			/* Trace, lane change after right half line detection */
-			if (sensor_inp(MASK4_4) == 0x00) { // wenn alle sensoren nuller werfen
-				//standard 15
-				handle(15);
+			if (sensor_inp(MASK4_4) == 0x00) {		// if all sensors reveive null			
+				handle(15);							//standard 15
 				motor(40, 31);
 				pattern = 54;
 				cnt1 = 0;
 				break;
 			}
+
 			switch (sensor_inp(MASK3_3)) {
+
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
 				motor(40, 40);
 				break;
+
 			case 0x04:
 			case 0x06:
 			case 0x07:
@@ -543,6 +580,7 @@ void main(void)
 				handle(8);
 				motor(40, 35);
 				break;
+
 			case 0x20:
 			case 0x60:
 			case 0xe0:
@@ -551,25 +589,24 @@ void main(void)
 				handle(-8);
 				motor(35, 40);
 				break;
+
 			default:
 				break;
 			}
-			break;
 
 		case 54:
-			/* Right lane change end check */
-			//standard ..== 0x3c
-			//Issue #4
-			//Issue#10
+			/* Right lane change end check 
+			standard ..== 0x3c
+			Issue #4
+			Issue#10	*/
 			if ((sensor_inp(MASK4_4) == 0x18)||
 			   (sensor_inp(MASK4_4) == 0x0c) ||
-			   (sensor_inp(MASK4_4) == 0x8c))
-			   {
+			   (sensor_inp(MASK4_4) == 0x8c)) {
 				led_out(0x0);
-
 				pattern = 11;
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 61:
@@ -587,6 +624,7 @@ void main(void)
 				pattern = 63;
 				cnt1 = 0;
 			}
+
 			break;
 
 		case 63:
@@ -598,12 +636,15 @@ void main(void)
 				cnt1 = 0;
 				break;
 			}
+
 			switch (sensor_inp(MASK3_3)) {
+
 			case 0x00:
 				/* Center -> straight */
 				handle(0);
 				motor(40, 40);
 				break;
+
 			case 0x04:
 			case 0x06:
 			case 0x07:
@@ -612,6 +653,7 @@ void main(void)
 				handle(8);
 				motor(40, 35);
 				break;
+
 			case 0x20:
 			case 0x60:
 			case 0xe0:
@@ -620,10 +662,10 @@ void main(void)
 				handle(-8);
 				motor(35, 40);
 				break;
+
 			default:
 				break;
 			}
-			break;
 
 		case 64:
 			/* Left lane change end check */
@@ -633,12 +675,12 @@ void main(void)
 			 */
 			if ((sensor_inp(MASK4_4) == 0x18) ||
 				(sensor_inp(MASK4_4) == 0xc0) ||
-			   (sensor_inp(MASK4_4) == 0xc8))
-			   {
+			   (sensor_inp(MASK4_4) == 0xc8)) {
 				led_out(0x0);
 				pattern = 11;
 				cnt1 = 0;
 			}
+
 			break;
 
 		default:
@@ -652,15 +694,13 @@ void main(void)
 /***********************************************************************/
 /* RX62T Initialization                                                */
 /***********************************************************************/
-void init(void)
-{
-	// System Clock
+void init(void) {
+	/* System Clock */
 	SYSTEM.SCKCR.BIT.ICK = 0;               //12.288*8=98.304MHz
 	SYSTEM.SCKCR.BIT.PCK = 1;               //12.288*4=49.152MHz
 
-	// Port I/O Settings
+	/* Port I/O Settings */
 	PORT1.DDR.BYTE = 0x03;                  //P10:LED2 in motor drive board
-
 	PORT2.DR.BYTE = 0x08;
 	PORT2.DDR.BYTE = 0x1b;                  //P24:SDCARD_CLK(o)
 											//P23:SDCARD_DI(o)
@@ -672,7 +712,6 @@ void init(void)
 	//PORT4:input                           //sensor input
 	//PORT5:input
 	//PORT6:input
-
 	PORT7.DDR.BYTE = 0x7e;                  //P76:LED3 in motor drive board
 											//P75:forward reverse signal(right motor)
 											//P74:forward reverse signal(left motor)
@@ -697,23 +736,23 @@ void init(void)
 	PORTE.DDR.BYTE = 0x1b;                  //PE5:SW(i)
 											//CN:PE4-PE0
 
-	// Compare match timer
+	/* Compare match timer */
 	MSTP_CMT0 = 0;                          //CMT Release module stop state
 	MSTP_CMT2 = 0;                          //CMT Release module stop state
 
 	ICU.IPR[0x04].BYTE = 0x0f;             //CMT0_CMI0 Priority of interrupts
 	ICU.IER[0x03].BIT.IEN4 = 1;             //CMT0_CMI0 Permission for interrupt
-	CMT.CMSTR0.WORD = 0x0000;           //CMT0,CMT1 Stop counting
-	CMT0.CMCR.WORD = 0x00C3;           //PCLK/512
+	CMT.CMSTR0.WORD = 0x0000;				//CMT0,CMT1 Stop counting
+	CMT0.CMCR.WORD = 0x00C3;				//PCLK/512
 	CMT0.CMCNT = 0;
-	CMT0.CMCOR = 96;               //1ms/(1/(49.152MHz/512))
-	CMT.CMSTR0.WORD = 0x0003;           //CMT0,CMT1 Start counting
+	CMT0.CMCOR = 96;						//1ms/(1/(49.152MHz/512))
+	CMT.CMSTR0.WORD = 0x0003;				//CMT0,CMT1 Start counting
 
-	// MTU3_3 MTU3_4 PWM mode synchronized by RESET
-	MSTP_MTU = 0;                //Release module stop state
-	MTU.TSTRA.BYTE = 0x00;             //MTU Stop counting
+	/* MTU3_3 MTU3_4 PWM mode synchronized by RESET */
+	MSTP_MTU = 0;							//Release module stop state
+	MTU.TSTRA.BYTE = 0x00;					//MTU Stop counting
 
-	MTU3.TCR.BYTE = 0x23;                 //ILCK/64(651.04ns)
+	MTU3.TCR.BYTE = 0x23;					//ILCK/64(651.04ns)
 	MTU3.TCNT = MTU4.TCNT = 0;              //MTU3,MTU4TCNT clear
 	MTU3.TGRA = MTU3.TGRC = PWM_CYCLE;      //cycle(16ms)
 	MTU3.TGRB = MTU3.TGRD = SERVO_CENTER;   //PWM(servo motor)
@@ -724,94 +763,102 @@ void init(void)
 											//PWM mode synchronized by RESET
 	MTU4.TMDR1.BYTE = 0x00;                 //Set 0 to exclude MTU3 effects
 	MTU.TOERA.BYTE = 0xc7;                 //MTU3TGRB,MTU4TGRA,MTU4TGRB permission for output
-
 	MTU.TSTRA.BYTE = 0x40;                 //MTU0,MTU3 count function
 }
 
 /***********************************************************************/
-/* Interrupt                                                           */
+/* Definition:														   */
+/*		Interrupt													   */
 /***********************************************************************/
 #pragma interrupt Excep_CMT0_CMI0(vect=28)
-void Excep_CMT0_CMI0(void)
-{
+void Excep_CMT0_CMI0(void) {
 	cnt0++;
 	cnt1++;
 }
 
 /***********************************************************************/
-/* Timer unit                                                          */
-/* Arguments: timer value, 1 = 1 ms                                    */
+/* Definition:                                                         */
+/*		 Timer unit													   */
+/* Arguments:						                                   */
+/*		timer:  value, 1 = 1 ms									       */
 /***********************************************************************/
-void timer(unsigned long timer_set)
-{
+void timer(unsigned long timer_set) {
 	cnt0 = 0;
 	while (cnt0 < timer_set);
 }
 
 /***********************************************************************/
-/* Sensor state detection                                              */
-/* Arguments:       masked values                                      */
-/* Return values:   sensor value                                       */
+/* Definition:			                                               */
+/*		Sensor state detection                                         */
+/* Arguments:					                                       */
+/*		masked values												   */
+/* Return values:				                                       */
+/*		sensor value				                                   */
 /***********************************************************************/
-unsigned char sensor_inp(unsigned char mask)
-{
+unsigned char sensor_inp(unsigned char mask) {
 	unsigned char sensor;
-
 	sensor = ~PORT4.PORT.BYTE;
-
 	sensor &= mask;
 
 	return sensor;
 }
 
 /***********************************************************************/
-/* Read start bar detection sensor                                     */
-/* Return values: Sensor value, ON (bar present):1,                    */
-/*                              OFF (no bar present):0                 */
+/* Definition:			                                               */
+/*		Read start bar detection sensor                                */
+/* Return values:				                                       */
+/*		Sensor value, ON (bar present):1,							   */
+/*                    OFF (no bar present):0						   */
 /***********************************************************************/
-unsigned char startbar_get(void)
-{
+unsigned char startbar_get(void) {
 	unsigned char b;
-
-	b = ~PORT4.PORT.BIT.B0 & 0x01;     /* Read start bar signal       */
+	b = ~PORT4.PORT.BIT.B0 & 0x01;     // Read start bar signal      
 
 	return  b;
 }
+
 /***********************************************************************/
-/* Check if still on track in lab                                     */
-/* Return values: 0: still on track, 1: not on track                      */
+/* Definition:			                                               */
+/*		Check if still on track in lab                                 */
+/* Return values:				                                       */
+/*		0: still on track, 1: not on track							   */
 /***********************************************************************/
-int check_not_on_track(void)
-{
+int check_not_on_track(void) {
 	unsigned char b;
 	int ret;
-
 	ret = 0;
 	b = sensor_inp(MASK4_4);
+
 	if (b == 0x00) {
 		ret = 1;
 	}
+
 	return ret;
 }
-/***********************************************************************/
-/* Check Gap beetween Crossline                                      */
-/* Return values: 0: still on crossline, 1: inside the gap                      */
-/***********************************************************************/
-int check_crossline_gap(void)
-{
-	int ret;
 
+/***********************************************************************/
+/* Definition:			                                               */
+/*		Check Gap beetween Crossline								   */
+/* Return values:				                                       */
+/*		still on crossline, 1: inside the gap						   */
+/***********************************************************************/
+int check_crossline_gap(void) {
+	int ret;
 	ret = 0;
+
 	if ((sensor_inp(MASK2_0) == 0x00) ||
-		(sensor_inp(MASK0_2) == 0x00)
-){
+		(sensor_inp(MASK0_2) == 0x00)) {
 		ret = 1;
 	}
+
 	return ret;
 }
+
 /***********************************************************************/
-/* Cross line detection processing                                     */
-/* Return values: 0: no cross line, 1: cross line                      */
+/* Definition:			                                               */
+/*		Cross line detection processing                                */
+/* Return values:				                                       */
+/*		0: no cross line, 1: cross line								   */
 /***********************************************************************/
 int check_crossline(void)
 {
@@ -825,8 +872,10 @@ int check_crossline(void)
 }
 
 /***********************************************************************/
-/* Right half line detection processing                                */
-/* Return values: 0: not detected, 1: detected                         */
+/* Definition:			                                               */
+/*		Right half line detection processing                           */
+/* Return values:				                                       */
+/*		0: not detected, 1: detected								   */
 /***********************************************************************/
 int check_rightline(void)
 {
@@ -837,8 +886,10 @@ int check_rightline(void)
 }
 
 /***********************************************************************/
-/* Left half line detection processing                                 */
-/* Return values: 0: not detected, 1: detected                         */
+/* Definition:			                                               */
+/*		Left half line detection processing                            */
+/* Return values:				                                       */
+/*		0: not detected, 1: detected								   */
 /***********************************************************************/
 int check_leftline(void)
 {
@@ -850,14 +901,14 @@ int check_leftline(void)
 }
 
 /***********************************************************************/
-/* DIP switch value read                                               */
-/* Return values: Switch value, 0 to 15                                */
+/* Definition:			                                               */
+/*		DIP switch value read                                          */
+/* Return values:				                                       */
+/*		Switch value, 0 to 15										   */
 /***********************************************************************/
-unsigned char dipsw_get(void)
-{
+unsigned char dipsw_get(void) {
 	unsigned char sw, d0, d1, d2, d3;
-
-	d0 = (PORT6.PORT.BIT.B3 & 0x01);  /* P63~P60 read                */
+	d0 = (PORT6.PORT.BIT.B3 & 0x01);		// P63~P60 read                
 	d1 = (PORT6.PORT.BIT.B2 & 0x01) << 1;
 	d2 = (PORT6.PORT.BIT.B1 & 0x01) << 2;
 	d3 = (PORT6.PORT.BIT.B0 & 0x01) << 3;
@@ -867,73 +918,73 @@ unsigned char dipsw_get(void)
 }
 
 /***********************************************************************/
-/* Push-button in MCU board value read                                 */
-/* Return values: Switch value, ON: 1, OFF: 0                          */
+/* Definition:			                                               */
+/*		Push-button in MCU board value read                            */
+/* Return values:				                                       */
+/*		Switch value, ON: 1, OFF: 0									   */
 /***********************************************************************/
-unsigned char buttonsw_get(void)
-{
+unsigned char buttonsw_get(void) {
 	unsigned char sw;
-
-	sw = ~PORTE.PORT.BIT.B5 & 0x01;     /* Read ports with switches    */
+	sw = ~PORTE.PORT.BIT.B5 & 0x01;     // Read ports with switches 
 
 	return  sw;
 }
 
 /***********************************************************************/
-/* Push-button in motor drive board value read                         */
-/* Return values: Switch value, ON: 1, OFF: 0                          */
+/* Definition:			                                               */
+/*		Push-button in motor drive board value read                    */
+/* Return values:				                                       */
+/*		Switch value, ON: 1, OFF: 0									   */
 /***********************************************************************/
-unsigned char pushsw_get(void)
-{
+unsigned char pushsw_get(void) {
 	unsigned char sw;
-
-	sw = ~PORT7.PORT.BIT.B0 & 0x01;    /* Read ports with switches    */
+	sw = ~PORT7.PORT.BIT.B0 & 0x01;    // Read ports with switches   
 
 	return  sw;
 }
 
 /***********************************************************************/
-/* LED control in MCU board                                            */
-/* Arguments: Switch value, LED0: bit 0, LED1: bit 1. 0: dark, 1: lit  */
-/*                                                                     */
+/* Definition:			                                               */
+/*		LED control in MCU board                                       */
+/* Arguments:														   */
+/*		Switch value, LED0: bit 0, LED1: bit 1. 0: dark, 1: lit		   */
 /***********************************************************************/
-void led_out_m(unsigned char led)
-{
+void led_out_m(unsigned char led) {
 	led = ~led;
 	PORTA.DR.BYTE = led & 0x0f;
 }
 
 /***********************************************************************/
-/* LED control in motor drive board                                    */
-/* Arguments: Switch value, LED0: bit 0, LED1: bit 1. 0: dark, 1: lit  */
-/* Example: 0x3 -> LED1: ON, LED0: ON, 0x2 -> LED1: ON, LED0: OFF      */
+/* Definition:			                                               */
+/*		LED control in motor drive board                               */
+/* Arguments:														   */
+/*		Switch value, LED0: bit 0, LED1: bit 1. 0: dark, 1: lit		   */
+/* Example:															   */
+/*		0x3 -> LED1: ON, LED0: ON, 0x2 -> LED1: ON, LED0: OFF		   */
 /***********************************************************************/
-void led_out(unsigned char led)
-{
+void led_out(unsigned char led) {
 	led = ~led;
 	PORT7.DR.BIT.B6 = led & 0x01;
 	PORT1.DR.BIT.B0 = (led >> 1) & 0x01;
 }
 
 /***********************************************************************/
-/* Motor speed control                                                 */
-/* Arguments:   Left motor: -100 to 100, Right motor: -100 to 100      */
-/*        Here, 0 is stopped, 100 is forward, and -100 is reverse.     */
-/* Return value:    None                                               */
+/* Definition:			                                               */
+/*		Motor speed control                                            */
+/* Arguments:														   */
+/*		Left motor: -100 to 100, Right motor: -100 to 100			   */
+/*      Here, 0 is stopped, 100 is forward, and -100 is reverse.	   */
 /***********************************************************************/
-void motor(int accele_l, int accele_r)
-{
-	//int    sw_data;
+void motor(int accele_l, int accele_r){
+	/* old Settings
+	int    sw_data;
+	sw_data = dipsw_get() + 5;
+	accele_l = accele_l * sw_data / 20;
+	accele_r = accele_r * sw_data / 20; */
 
-
-	/* old Settings*/
-	//sw_data = dipsw_get() + 5;
-	//accele_l = accele_l * sw_data / 20;
-	//accele_r = accele_r * sw_data / 20;
-
-	//use speedFactor instead
-	accele_l = accele_l * speedFactor;
-	accele_r = accele_r * speedFactor;
+	/* use speedFactor instead */
+	accele_l = accele_l * SPEED_FACTOR;
+	accele_r = accele_r * SPEED_FACTOR;
 
 
 	/* Left Motor Control */
@@ -958,20 +1009,43 @@ void motor(int accele_l, int accele_r)
 }
 
 /***********************************************************************/
-/* Servo steering operation                                            */
-/* Arguments:   servo operation angle: -90 to 90                       */
-/*              -90: 90-degree turn to left, 0: straight,              */
-/*               90: 90-degree turn to right
-/ *				 Limited to -45 to 45									*/
+/* Definition:			                                               */
+/*		Servo steering operation                                       */
+/* Arguments:														   */
+/*		servo operation angle: -90 to 90							   */
+/*      -90: 90-degree turn to left, 0: straight,					   */
+/*      90: 90-degree turn to right									   */
+/*		Limited to -45 to 45										   */
 /***********************************************************************/
-void handle(int angle)
-{
-	//if used angle is to big
-	if(angle>maximumAngle)angle = maximumAngle;
-	if(angle<-maximumAngle)angle = -maximumAngle;
+void handle(int angle) {
+	/* if used angle is to big */
+	if(angle>MAXIMUM_ANGLE)angle = MAXIMUM_ANGLE;
+	if(angle<-MAXIMUM_ANGLE)angle = -MAXIMUM_ANGLE;
 
 	/* When the servo move from left to right in reverse, replace "-" with "+". */
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
+}
+
+
+/***********************************************************************/
+/* Definition:			                                               */
+/*		Slow down motor bevore curve                                   */
+/* Arguments:														   */
+/*		time intervall to slow down motor							   */
+/***********************************************************************/													   */
+void slowDownMotorPower_linear(int time) {
+	if (cnt1 <= time) {
+				int timeBetweenEachSlowDownStep = time/(100-CURVE_ENTRANCE_MOTOR_POWER);	
+				int slowDownValue = cnt1/timeBetweenEachSlowDownStep;						
+					
+				if ((100 - slowDownValue) >= CURVE_ENTRANCE_MOTOR_POWER) {
+					actualMotorPower = 100 - slowDownValue;
+				}
+				else{
+					actualMotorPower = CURVE_ENTRANCE_MOTOR_POWER;
+				}
+
+				}
 }
 
 /***********************************************************************/
