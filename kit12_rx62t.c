@@ -983,8 +983,8 @@ void motor(int accele_l, int accele_r){
 	accele_r = accele_r * sw_data / 20; */
 
 	/* use speedFactor instead */
-	accele_l = accele_l * SPEED_FACTOR;
-	accele_r = accele_r * SPEED_FACTOR;
+	accele_l = accele_l * speedFactor;
+	accele_r = accele_r * speedFactor;
 
 
 	/* Left Motor Control */
