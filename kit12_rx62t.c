@@ -45,14 +45,26 @@ This program supports the following boards:
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
 /*Own MASK declarations */
-#define MASK1_0				0x80			/* O X X X  X X X X				*/
-#define MASK0_1				0x01			/* X X X X  X X X O				*/
+#define MASK1_1_Outer		0x81			/* 0 X X X  X X X 0				*/
+#define MASK1_0_Outer		0x80			/* O X X X  X X X X				*/
+#define MASK0_1_Outer		0x01			/* X X X X  X X X O				*/
+
+#define MASK2_2_Outer		0xc3			/* O O X X  X X O O				*/
 #define MASK2_0_Outer		0xc0			/* O O X X  X X X X				*/
 #define MASK0_2_Outer		0x03			/* X X X X  X X O O				*/
 
 #define MASK1_1_Inner		0x24			/* X X 0 X  X 0 X X				*/
-#define MASK1_1_Middle		0x42			/* X 0 X X  X X 0 X				*/
-#define MASK1_1_Outer		0x81			/* 0 X X X  X X X 0				*/
+#define MASK0_1_Inner		0x04			/* X X X X  X 0 X X				*/
+#define MASK1_0_Inner		0x20			/* X X 0 X  X X X X				*/
+
+#define MASK1_1_MiddleOuter		0x42		/* X 0 X X  X X 0 X				*/
+#define MASK0_1_MiddleOuter		0x02		/* X X X X  X X 0 X				*/
+#define MASK1_0_MiddleOuter		0x40		/* X 0 X X  X X X X				*/
+
+
+
+
+
 
 /*======================================*/
 /* Prototype declarations               */
@@ -72,6 +84,12 @@ void led_out(unsigned char led);
 void motor(int accele_l, int accele_r);
 void handle(int angle);
 
+void stopAndFlash(int frequenz, int LED); // Own methode
+int check_crossline_gap(void); // Own methode
+int check_not_on_track(void); //Own Methode
+int checkline(void); //Own Methode
+int check_leftline_onLine(void);
+int check_leftline_onLine(void);
 /*======================================*/
 /* Global variable declarations         */
 /*======================================*/
@@ -99,6 +117,9 @@ double gapDistance = 90;
 //Testtimer
 int crankTimer=100;
 
+//Marker der gesetzt wird wenn eine line überquert wurd
+int isLine=0;
+
 
 /***********************************************************************/
 /* Main program                                                        */
@@ -124,6 +145,7 @@ void main(void)
 			13: check end of large turn to left
 			21: processing at 1st cross line
 			22: read but ignore 2nd time
+
 			23: trace, crank detection after cross line
 			31: left crank clearing processing ? wait until stable
 			32: left crank clearing processing ? check end of turn
@@ -179,37 +201,44 @@ void main(void)
 
 		case 11:
 			/* Normal trace */
-			if (check_crossline()) {   /* Cross line check            */
-				pattern = 21;
+			//Fall muss gründlich geprüft werden
+			if(check_rightline_onLine()){
+				cnt1=0;
+				pattern=110;
 				break;
 			}
-			if (check_rightline()) {   /* Right half line detection check */
-				pattern = 51;
-				while(1){
-					motor(0,0);
-
-					if (cnt1 < 50) {           /* LED flashing processing     */
-								led_out(0x1);
-							}
-							else if (cnt1 < 100) {
-								led_out(0x2);
-							}
-							else {
-								cnt1 = 0;
-							}
-				}
+			if(check_leftline_onLine()){
+				cnt1=0;
+				pattern=111;
 				break;
 			}
-			if (check_leftline()) {    /* Left half line detection check */
-				pattern = 61;
-				break;
 
+		case 110:
+			//Crossline
+			if(check_leftline_onLine()&&(pattern==110)){
+				pattern=21;
+				stopAndFlash(0, 23);
+				break;
 			}
 
-		//	if(check_not_on_track()){  // break if not on track
-		//		motor(0,0);
-		//		break;
-		//	}
+			if(cnt1>1000 && (pattern==110)){
+				pattern =51;
+				stopAndFlash(1000, 3);
+				break;
+			}
+
+		case 111:
+			//crossline
+			if(check_rightline_onLine()&& (pattern==111)){
+				pattern=21;
+				stopAndFlash(0, 23);
+				break;
+			}
+			if(cnt1>1000 && (pattern==111)){
+				pattern =61;
+				stopAndFlash(1000, 3);
+				break;
+			}
 
 
 			switch (sensor_inp(MASK3_3)) {
@@ -306,6 +335,7 @@ void main(void)
 			break;
 
 		case 13:
+
 			/* Check end of large turn to left */
 			if (check_crossline()) {   /* Cross line check during large turn */
 				pattern = 21;
@@ -379,7 +409,7 @@ void main(void)
 				measuredSpeed = gapDistance/cnt0;
 				pattern = 222;
 				cnt1 = 0;
-				//led_out(0x3);
+
 			}
 			break;
 			
@@ -390,17 +420,13 @@ void main(void)
 				cnt1 = 0;
 				while(1){
 					motor(0,0);
-					led_out(0x3); //LED 2+3
-
 				}
 			}
 			break;
 
 
 		case 23:
-			while(1){
-				motor(0,0);
-			}
+
 			/* Trace, crank detection after cross line
 			 *
 			 * 1 - reconised Line
@@ -500,7 +526,7 @@ void main(void)
 		case 51:
 			/* Processing at 1st right half line detection */
 			//standard 2
-			led_out(0x1); //LED 3
+			led_out(0x3); //LED 3
 
 
 			handle(0);
@@ -574,7 +600,7 @@ void main(void)
 
 		case 61:
 			/* Processing at 1st left half line detection */
-			led_out(0x1);
+			led_out(0x3);
 			handle(0);
 			motor(0, 0);
 			pattern = 62;
@@ -799,30 +825,51 @@ int check_not_on_track(void)
 /***********************************************************************/
 int check_crossline_gap(void)
 {
-	int ret;
-
-	ret = 0;
 	if ((sensor_inp(MASK2_0) == 0x00) ||
 		(sensor_inp(MASK0_2) == 0x00)
-){
-		ret = 1;
-	}
-	return ret;
-}
-/***********************************************************************/
-/* Cross line detection processing                                     */
-/* Return values: 0: no cross line, 1: cross line                      */
-/***********************************************************************/
-int check_crossline(void)
-{
-	if ((sensor_inp(MASK4_4) == 0xff)||
-		(sensor_inp(MASK4_4) == 0x7e)||
-		(sensor_inp(MASK4_4) == 0x3c))
-		{
+	){
 		return 1;
 	}
 	return 0;
 }
+/***********************************************************************/
+/* Line detection processing                                     */
+/* Return values: 21 is Crossline 51 is RightLine 61 is LeftLine, 11 is nothing       */
+/**********************************************************************/
+int checkline(void){
+	if(!isLine){
+
+		if((sensor_inp(MASK3_0)==0xe0)||
+	    	(sensor_inp(MASK0_3)==0x07))
+		{
+			isLine=1;
+			cnt1=0;
+
+		}
+	}
+	return 11;
+
+}
+
+int whichTurn(){
+	return 1;
+}
+
+/***********************************************************************/
+/* Cross line detection processing                                     */
+/* Return values: 0: no cross line, 1: cross line                      */
+/**********************************************************************/
+int check_crossline(void)
+
+{
+	if ((sensor_inp(MASK3_3) == 0xe7)||
+		(sensor_inp(MASK2_2) == 0x66))
+		{
+		return 1;
+		}
+	return 0;
+}
+
 
 /***********************************************************************/
 /* Right half line detection processing                                */
@@ -832,6 +879,15 @@ int check_rightline(void)
 {
 	if (sensor_inp(MASK4_4) == 0x1f) {
 		return 1;
+
+	}
+	return 0;
+}
+int check_rightline_onLine(void)
+{
+	if (sensor_inp(MASK0_3) == 0x07) {
+		return 1;
+
 	}
 	return 0;
 }
@@ -844,6 +900,14 @@ int check_leftline(void)
 {
 
 	if (sensor_inp(MASK4_4) == 0xf8) {
+		return 1;
+	}
+	return 0;
+}
+int check_leftline_onLine(void)
+{
+
+	if (sensor_inp(MASK3_0) == 0xe0) {
 		return 1;
 	}
 	return 0;
@@ -966,7 +1030,7 @@ void motor(int accele_l, int accele_r)
 /***********************************************************************/
 void handle(int angle)
 {
-	//if used angle is to big
+	//used if angle is to big
 	if(angle>maximumAngle)angle = maximumAngle;
 	if(angle<-maximumAngle)angle = -maximumAngle;
 
@@ -974,6 +1038,70 @@ void handle(int angle)
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
 }
 
+/***********************************************************************/
+/*Absichtliche unendlich schleife, in der das auto gestoppt wird
+ * frequenz gibt an in welcher frequenz die LED's blinken
+ *Maximaler dauer ist 1500 ms
+ *Minimaler dauer ist 100 ms
+ *wenn frequnz 0 ist dann blinken die LED's gar nicht
+ *
+ *LED gibt an welche LED's blinken
+ *0 LED2 und LED 3 blinken abwechselnd
+ *2 nur LED2 blinkt
+ *3 nur LED3 blinkt
+ *23 beide LED blinken
+ * 							*/
+/***********************************************************************/
+void stopAndFlash(int frequenz, int LED){
+
+	if(frequenz<100){
+		frequenz =100;
+	}
+	if(frequenz>1500){
+		frequenz=1500;
+	}
+	while(1){
+		motor(0,0);
+
+		if(frequenz==0){
+			if(LED==2){
+				led_out(0x2);
+				continue;
+
+			}if(LED==3){
+				led_out(0x1);
+				continue;
+			}
+			if(LED==23){
+				led_out(0x3);
+				continue;
+
+			}
+		}else if (cnt1 < frequenz) {
+			if(LED==2){
+				led_out(0x2);
+			}
+			if(LED==3){
+				led_out(0x1);
+			}
+			if(LED==23){
+				led_out(0x3);
+			}
+			if(LED==0){
+				led_out(0x1);
+			}
+		}
+		else if (cnt1 < frequenz*2) {
+			if(LED==2 || LED==3 || LED==23){
+				led_out(0x0);
+			}if(LED==0)
+				led_out(0x2);
+		}
+		else {
+			cnt1 = 0;
+		}
+	}
+}
 /***********************************************************************/
 /* end of file                                                         */
 /***********************************************************************/
