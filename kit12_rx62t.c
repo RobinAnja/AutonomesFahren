@@ -201,8 +201,13 @@ void main(void)
 
 		case 11:
 			/* Normal trace */
-			//Fall muss gründlich geprüft werden
-
+			// Fall muss gründlich geprüft werden
+			// stop and falsh für frq=0 funktioniert nicht
+			// Idee für Aufbau von Case 11
+			// wenn line rechts erkannt wird dann prüfe ob links
+			// erkannt wird wenn nicht prüfe ob gap rechts erkannt wird,
+			// bei Links->crossline pattern
+			// bei gap right lane switch pattern
 			if(check_rightline_onLine()){
 				cnt1=0;
 				pattern=110;
@@ -222,6 +227,7 @@ void main(void)
 				break;
 			}
 
+			// hier muss der gap check rein
 			if(cnt1>1000 && (pattern==110)){
 				pattern =51;
 				stopAndFlash(1000, 3);
@@ -235,6 +241,7 @@ void main(void)
 				stopAndFlash(0, 23);
 				break;
 			}
+			// hier muss auch der gap check rein
 			if(cnt1>1000 && (pattern==111)){
 				pattern =61;
 				stopAndFlash(1000, 3);
