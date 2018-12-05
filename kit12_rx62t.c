@@ -202,6 +202,7 @@ void main(void)
 		case 11:
 			/* Normal trace */
 			//Fall muss gründlich geprüft werden
+
 			if(check_rightline_onLine()){
 				cnt1=0;
 				pattern=110;
