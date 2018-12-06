@@ -84,12 +84,19 @@ void led_out(unsigned char led);
 void motor(int accele_l, int accele_r);
 void handle(int angle);
 
-void stopAndFlash(int frequenz, int LED); // Own methode
-int check_crossline_gap(void); // Own methode
-int check_not_on_track(void); //Own Methode
-int checkline(void); //Own Methode
-int check_leftline_onLine(void); //Own Methode
-int check_leftline_onLine(void); //Own Methode
+
+//Own Methode
+void stopAndFlash(int frequenz, int LED);
+int check_crossline_gap(void);
+int check_not_on_track(void);
+int checkline(void);
+int check_leftline_onLine(void);
+int check_rightline_onLine(void);
+int check_leftline_gap(void);
+int check_rightline_gap(void);
+int check_leftline_onLine_secTime(void);
+int check_rightline_onLine_secTime(void);
+
 /*======================================*/
 /* Global variable declarations         */
 /*======================================*/
@@ -201,12 +208,7 @@ void main(void)
 
 		case 11:
 			/* Normal trace */
-			// Fall muss gründlich geprüft werden
-			// Idee für Aufbau von Case 11
-			// wenn line rechts erkannt wird dann prüfe ob links
-			// erkannt wird wenn nicht prüfe ob gap rechts erkannt wird,
-			// bei Links->crossline pattern
-			// bei gap right lane switch pattern
+
 			if(check_rightline_onLine()){
 				cnt1=0;
 				pattern=110;
@@ -216,38 +218,38 @@ void main(void)
 				cnt1=0;
 				pattern=111;
 				break;
-			}else{
-				break;
 			}
 
 		case 110:
 			//Crossline
-			if(check_leftline_onLine()){
+			if(check_leftline_onLine_secTime() && pattern==110){
 				pattern=21;
 				stopAndFlash(0, 23);
 				break;
 			}
 
 			// hier muss der gap check rein
-			if(cnt1>1000){
+			else if(check_rightline_gap() && pattern==110){
 				pattern =51;
-				stopAndFlash(1000, 23);
+				stopAndFlash(500, 3);
 				break;
 			}
 
+
 		case 111:
 			//crossline
-			if(check_rightline_onLine()){
+			if(check_rightline_onLine_secTime() && pattern==111){
 				pattern=21;
 				stopAndFlash(0, 23);
 				break;
 			}
 			// hier muss auch der gap check rein
-			if(cnt1>1000){
+			else if(check_leftline_gap() && pattern==111){
 				pattern =61;
-				stopAndFlash(1000, 23);
+				stopAndFlash(500, 2);
 				break;
 			}
+
 
 
 			switch (sensor_inp(MASK3_3)) {
@@ -281,6 +283,8 @@ void main(void)
 				//Default 12,5 9,5
 				motor(25, 15);
 				pattern = 12;
+
+				stopAndFlash(100,0);
 				break;
 
 			case 0x03:
@@ -308,6 +312,8 @@ void main(void)
 				handle(-55);
 				motor(15, 25);
 				pattern = 13;
+
+				stopAndFlash(100,0);
 				break;
 
 			case 0xc0:
@@ -842,29 +848,6 @@ int check_crossline_gap(void)
 	return 0;
 }
 /***********************************************************************/
-/* Line detection processing                                     */
-/* Return values: 21 is Crossline 51 is RightLine 61 is LeftLine, 11 is nothing       */
-/**********************************************************************/
-int checkline(void){
-	if(!isLine){
-
-		if((sensor_inp(MASK3_0)==0xe0)||
-	    	(sensor_inp(MASK0_3)==0x07))
-		{
-			isLine=1;
-			cnt1=0;
-
-		}
-	}
-	return 11;
-
-}
-
-int whichTurn(){
-	return 1;
-}
-
-/***********************************************************************/
 /* Cross line detection processing                                     */
 /* Return values: 0: no cross line, 1: cross line                      */
 /**********************************************************************/
@@ -901,6 +884,28 @@ int check_rightline_onLine(void)
 	return 0;
 }
 
+int check_rightline_onLine_secTime(void)
+{
+	if ((sensor_inp(MASK0_3) == 0x07) ||
+		(sensor_inp(MASK0_3) == 0x06) ||
+		(sensor_inp(MASK0_3) == 0x05) ||
+		(sensor_inp(MASK0_3) == 0x03)
+		)
+	{
+		return 1;
+
+	}
+	return 0;
+}
+
+
+int check_rightline_gap(void){
+	if(sensor_inp(MASK0_2) == 0x00){
+		return 1;
+	}
+	return 0;
+}
+
 /***********************************************************************/
 /* Left half line detection processing                                 */
 /* Return values: 0: not detected, 1: detected                         */
@@ -918,6 +923,27 @@ int check_leftline_onLine(void)
 {
 
 	if (sensor_inp(MASK3_0) == 0xe0) {
+		return 1;
+	}
+	return 0;
+}
+
+int check_leftline_onLine_secTime(void)
+{
+	if ((sensor_inp(MASK3_0) == 0xe0) ||
+		(sensor_inp(MASK3_0) == 0xc0) ||
+		(sensor_inp(MASK3_0) == 0xa0) ||
+		(sensor_inp(MASK3_0) == 0x60)
+		)
+	{
+		return 1;
+
+	}
+	return 0;
+}
+
+int check_leftline_gap(void){
+	if(sensor_inp(MASK2_0) == 0x00){
 		return 1;
 	}
 	return 0;
