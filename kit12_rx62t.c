@@ -212,6 +212,7 @@ void main(void)
 			if(check_rightline_onLine()){
 				cnt1=0;
 				pattern=110;
+
 				break;
 			}
 			else if(check_leftline_onLine()){
@@ -224,13 +225,17 @@ void main(void)
 			//Crossline
 			if(check_leftline_onLine_secTime() && pattern==110){
 				pattern=21;
+				cnt0=0;
+
 				break;
 			}
 
 			// hier muss der gap check rein
 			else if(check_rightline_gap() && pattern==110){
 				pattern =51;
-				stopAndFlash(500, 3);
+				//wenn er hier landet beim überquern der crossline,
+				//muss ab branch betterCase11 neu gestartet werden
+				stopAndFlash(100, 3);
 				break;
 			}
 
@@ -239,12 +244,16 @@ void main(void)
 			//crossline
 			if(check_rightline_onLine_secTime() && pattern==111){
 				pattern=21;
+				cnt0=0;
+
 				break;
 			}
 			// hier muss auch der gap check rein
 			else if(check_leftline_gap() && pattern==111){
 				pattern =61;
-				stopAndFlash(500, 2);
+				//wenn er hier landet beim überquern der crossline,
+				//muss ab branch betterCase11 neu gestartet werden
+				stopAndFlash(100, 2);
 				break;
 			}
 
@@ -368,8 +377,7 @@ void main(void)
 			break;
 
 		case 21:
-			//start Timer
-			cnt0=0;
+			//start Timer for speed messeurment
 			/* Processing at 1st cross line */
 			handle(0);
 			// initial break on first line read
@@ -396,16 +404,13 @@ void main(void)
 			/* check if car is in gap beetween lines */
 			if (check_crossline_gap()) {
 				pattern = 220;
-
 			}
 			break;
 
 		case 220:
-			/* check if gap car was in Gap and if we pass the 2nd Crossline */
-			if (check_crossline()) { 
+			/* check 2nd Crossline */
+			if (check_rightline_onLine_secTime() || check_rightline_onLine_secTime()) {
 				pattern = 221;
-				stopAndFlash(0,23);
-
 			}
 			break;
 			
@@ -417,7 +422,6 @@ void main(void)
 				measuredSpeed = gapDistance/cnt0;
 				pattern = 222;
 				cnt1 = 0;
-
 			}
 			break;
 			
@@ -427,6 +431,8 @@ void main(void)
 				pattern = 23;
 				cnt1 = 0;
 			}
+
+
 			break;
 
 
@@ -1088,6 +1094,7 @@ void stopAndFlash(int frequenz, int LED){
 	}
 	while(1){
 		motor(0,0);
+		handle(0);
 
 		if(frequenz==0){
 			if(LED==2){
