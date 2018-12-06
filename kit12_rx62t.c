@@ -88,8 +88,8 @@ void stopAndFlash(int frequenz, int LED); // Own methode
 int check_crossline_gap(void); // Own methode
 int check_not_on_track(void); //Own Methode
 int checkline(void); //Own Methode
-int check_leftline_onLine(void);
-int check_leftline_onLine(void);
+int check_leftline_onLine(void); //Own Methode
+int check_leftline_onLine(void); //Own Methode
 /*======================================*/
 /* Global variable declarations         */
 /*======================================*/
@@ -202,7 +202,6 @@ void main(void)
 		case 11:
 			/* Normal trace */
 			// Fall muss gründlich geprüft werden
-			// stop and falsh für frq=0 funktioniert nicht
 			// Idee für Aufbau von Case 11
 			// wenn line rechts erkannt wird dann prüfe ob links
 			// erkannt wird wenn nicht prüfe ob gap rechts erkannt wird,
@@ -213,38 +212,40 @@ void main(void)
 				pattern=110;
 				break;
 			}
-			if(check_leftline_onLine()){
+			else if(check_leftline_onLine()){
 				cnt1=0;
 				pattern=111;
+				break;
+			}else{
 				break;
 			}
 
 		case 110:
 			//Crossline
-			if(check_leftline_onLine()&&(pattern==110)){
+			if(check_leftline_onLine()){
 				pattern=21;
 				stopAndFlash(0, 23);
 				break;
 			}
 
 			// hier muss der gap check rein
-			if(cnt1>1000 && (pattern==110)){
+			if(cnt1>1000){
 				pattern =51;
-				stopAndFlash(1000, 3);
+				stopAndFlash(1000, 23);
 				break;
 			}
 
 		case 111:
 			//crossline
-			if(check_rightline_onLine()&& (pattern==111)){
+			if(check_rightline_onLine()){
 				pattern=21;
 				stopAndFlash(0, 23);
 				break;
 			}
 			// hier muss auch der gap check rein
-			if(cnt1>1000 && (pattern==111)){
+			if(cnt1>1000){
 				pattern =61;
-				stopAndFlash(1000, 3);
+				stopAndFlash(1000, 23);
 				break;
 			}
 
@@ -366,7 +367,7 @@ void main(void)
 			//start Timer
 			cnt0=0;
 			/* Processing at 1st cross line */
-			led_out(0x2); //LED 3
+			led_out(0x2);
 			handle(0);
 			// initial break on first line read
 			motor(20, 20);
@@ -444,7 +445,7 @@ void main(void)
 			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
-				led_out(0x1); //LED2
+				led_out(0x1); //LED3
 				handle(-45);
 				//standard (10,50)
 				motor(10, 50);
@@ -534,7 +535,7 @@ void main(void)
 		case 51:
 			/* Processing at 1st right half line detection */
 			//standard 2
-			led_out(0x3); //LED 3
+			led_out(0x3); //LED 23
 
 
 			handle(0);
@@ -912,6 +913,7 @@ int check_leftline(void)
 	}
 	return 0;
 }
+
 int check_leftline_onLine(void)
 {
 
@@ -1062,7 +1064,7 @@ void handle(int angle)
 /***********************************************************************/
 void stopAndFlash(int frequenz, int LED){
 
-	if(frequenz<100){
+	if(frequenz<100 && frequenz!=0){
 		frequenz =100;
 	}
 	if(frequenz>1500){
