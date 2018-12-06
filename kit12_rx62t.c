@@ -224,7 +224,6 @@ void main(void)
 			//Crossline
 			if(check_leftline_onLine_secTime() && pattern==110){
 				pattern=21;
-				stopAndFlash(0, 23);
 				break;
 			}
 
@@ -240,7 +239,6 @@ void main(void)
 			//crossline
 			if(check_rightline_onLine_secTime() && pattern==111){
 				pattern=21;
-				stopAndFlash(0, 23);
 				break;
 			}
 			// hier muss auch der gap check rein
@@ -373,7 +371,6 @@ void main(void)
 			//start Timer
 			cnt0=0;
 			/* Processing at 1st cross line */
-			led_out(0x2);
 			handle(0);
 			// initial break on first line read
 			motor(20, 20);
@@ -401,17 +398,13 @@ void main(void)
 				pattern = 220;
 
 			}
-			//Falls er in diesen Fall hängt, soll er nach 500ms die prüfung überspringen
-			else if(cnt1>500){
-				pattern=23;
-				led_out(0x0); // LED aus
-			}
 			break;
 
 		case 220:
 			/* check if gap car was in Gap and if we pass the 2nd Crossline */
 			if (check_crossline()) { 
 				pattern = 221;
+				stopAndFlash(0,23);
 
 			}
 			break;
@@ -433,9 +426,6 @@ void main(void)
 
 				pattern = 23;
 				cnt1 = 0;
-				while(1){
-					motor(0,0);
-				}
 			}
 			break;
 
