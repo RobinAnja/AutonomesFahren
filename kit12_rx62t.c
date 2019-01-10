@@ -96,6 +96,7 @@ int check_leftline_gap(void);
 int check_rightline_gap(void);
 int check_leftline_onLine_secTime(void);
 int check_rightline_onLine_secTime(void);
+void helper();
 
 /*======================================*/
 /* Global variable declarations         */
@@ -115,7 +116,7 @@ int maximumAngle = 45;
 
 //Current Speed of car in m/s
 // 2 m/s ist so das maximum was der wagen auf mindesetns 1,5 m beschleunigen kann
-double measuredSpeed=1.4;
+double measuredSpeed;
 
 //Distance beetwen Beginning of First Crossline to End of secound Crossline in mm
 //Programm Explantion Manual Page 125
@@ -225,8 +226,6 @@ void main(void)
 			//Crossline
 			if(check_leftline_onLine_secTime() && pattern==110){
 				pattern=21;
-				cnt0=0;
-
 				break;
 			}
 
@@ -244,8 +243,6 @@ void main(void)
 			//crossline
 			if(check_rightline_onLine_secTime() && pattern==111){
 				pattern=21;
-				cnt0=0;
-
 				break;
 			}
 			// hier muss auch der gap check rein
@@ -381,8 +378,8 @@ void main(void)
 			/* Processing at 1st cross line */
 			handle(0);
 			// initial break on first line read
-			motor(20, 20);
 			pattern = 22;
+			cnt0=0;
 			cnt1 = 0;
 			break;
 
@@ -409,7 +406,7 @@ void main(void)
 
 		case 220:
 			/* check 2nd Crossline */
-			if (check_rightline_onLine_secTime() || check_rightline_onLine_secTime()) {
+			if (check_rightline_onLine_secTime() || check_leftline_onLine_secTime()) {
 				pattern = 221;
 			}
 			break;
@@ -419,7 +416,9 @@ void main(void)
 			if (check_crossline_gap()) {
 
 				//measurement of Speed
+
 				measuredSpeed = gapDistance/cnt0;
+
 				pattern = 222;
 				cnt1 = 0;
 			}
@@ -427,17 +426,13 @@ void main(void)
 			
 		case 222:
 			if (cnt1 > 50) {
-
 				pattern = 23;
 				cnt1 = 0;
 			}
-
-
 			break;
-
-
 		case 23:
 
+			helper();
 			/* Trace, crank detection after cross line
 			 *
 			 * 1 - reconised Line
@@ -452,6 +447,7 @@ void main(void)
 				//standard (10,50)
 				motor(10, 50);
 				pattern = 31;
+				crankTimer=measuredSpeed*110;
 				cnt1 = 0;
 				break;
 			}
@@ -499,7 +495,6 @@ void main(void)
 			break;
 			*/
 
-			crankTimer=measuredSpeed*110;
 
 			if(cnt1 > crankTimer){
 				pattern =32;
@@ -1070,18 +1065,53 @@ void handle(int angle)
 	MTU3.TGRD = SERVO_CENTER - angle * HANDLE_STEP;
 }
 
+//Nur für Testen des Geschwindigkeits messens
+void helper(){
+	while(1){
+
+
+		if(measuredSpeed>0.0 && measuredSpeed<1.5 ){
+			led_out_m(0x00);
+		}
+		else if(measuredSpeed>=1.5 && measuredSpeed<2.0 ){
+					led_out_m(0x01);
+				}
+		else if(measuredSpeed>=2.0 && measuredSpeed<2.5 ){
+							led_out_m(0x02);
+						}
+		else if(measuredSpeed>=3.0 && measuredSpeed<3.5 ){
+							led_out_m(0x03);
+						}
+		else if(measuredSpeed>=4.0 && measuredSpeed<4.5 ){
+							led_out_m(0x04);
+						}
+		else if(measuredSpeed>=5.0 && measuredSpeed<5.5 ){
+							led_out_m(0x05);
+						}
+		else if(measuredSpeed>=6.0 && measuredSpeed<6.5 ){
+									led_out_m(0x06);
+								}
+		else if(measuredSpeed>=6.5 && measuredSpeed<7.0 ){
+									led_out_m(0x07);
+								}
+		else{
+			stopAndFlash(1000,0);
+		}
+
+	}
+}
 /***********************************************************************/
 /*Absichtliche unendlich schleife, in der das auto gestoppt wird
  * frequenz gibt an in welcher frequenz die LED's blinken
  *Maximaler dauer ist 1500 ms
  *Minimaler dauer ist 100 ms
- *wenn frequnz 0 ist dann blinken die LED's gar nicht
+ *wenn frequnz 0 ist dann blinken die LED's gar nicht->sie bleiben einfach nur an
  *
  *LED gibt an welche LED's blinken
  *0 LED2 und LED 3 blinken abwechselnd
  *2 nur LED2 blinkt
  *3 nur LED3 blinkt
- *23 beide LED blinken
+ *23 beide LED blinken gleiczeitig auf und ab
  * 							*/
 /***********************************************************************/
 void stopAndFlash(int frequenz, int LED){
