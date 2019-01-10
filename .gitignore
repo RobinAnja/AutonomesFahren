@@ -1,4 +1,4 @@
-﻿################################################################################
+################################################################################
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
@@ -7,3 +7,11 @@
 /.vs/AutonomesFahren/v15/Browse.VC.db
 /.vs/AutonomesFahren/v15/Browse.VC.opendb
 /.vs/ProjectSettings.json
+Debug/vecttbl.obj
+Debug/sbrk.obj
+Debug/resetprg.obj
+Debug/kit12_rx62t.obj
+Debug/kit12_rx62t.lib
+Debug/intprg.obj
+Debug/hwsetup.obj
+Debug/dbsct.obj
