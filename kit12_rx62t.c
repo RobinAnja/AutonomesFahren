@@ -219,7 +219,6 @@ void main(void)
 				pattern=110;
 				break;
 			}
-
 			else if(check_leftline_onLine()){
 				cnt1=0;
 				pattern=111;
@@ -256,11 +255,8 @@ void main(void)
 				break;
 			}
 
-			// hier muss der gap check rein
 			else if(check_rightline_gap() && pattern==110){
 				pattern =51;
-				//wenn er hier landet beim überquern der crossline,
-				//muss ab branch betterCase11 neu gestartet werden
 				stopAndFlash(100, 3);
 				break;
 			}
@@ -273,16 +269,11 @@ void main(void)
 				pattern=21;
 				break;
 			}
-			// hier muss auch der gap check rein
 			else if(check_leftline_gap() && pattern==111){
 				pattern =61;
-				//wenn er hier landet beim überquern der crossline,
-				//muss ab branch betterCase11 neu gestartet werden
 				stopAndFlash(100, 2);
 				break;
 			}
-
-
 
 			switch (sensor_inp(MASK3_3)) {
 			case 0x00:
