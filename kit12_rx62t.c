@@ -99,6 +99,8 @@ int check_leftline_onLine_secTime(void);
 int check_rightline_onLine_secTime(void);
 void helper();
 int bitCount();
+int check_crank_left(void);
+int check_crank_right(void);
 
 /*======================================*/
 /* Global variable declarations         */
@@ -390,11 +392,11 @@ void main(void)
 			break;
 
 		case 21:
-			stopAndFlash(0,23);
 			//start Timer for speed messeurment
 			/* Processing at 1st cross line */
 			handle(0);
 			// initial break on first line read
+			motor(0,0);
 			pattern = 22;
 			cnt1=0;
 			break;
@@ -430,15 +432,13 @@ void main(void)
 		case 221:		
 			/* check if we passed the 2nd crossline, after passing the gap */
 			if (check_crossline_gap()) {
-
 				//measurement of Speed
-				measuredSpeed = gapDistance/(double)cnt0;
-
+				//measuredSpeed = gapDistance/(double)cnt0;
 				pattern = 222;
 				cnt1=0;
 			}
 			break;
-			
+
 		case 222:
 			if (cnt1 > 50) {
 				pattern = 23;
@@ -446,26 +446,20 @@ void main(void)
 			break;
 
 		case 23:
-			helper();
-			/* Trace, crank detection after cross line
-			 *
-			 * 1 - reconised Line
-			 * 0 - not recognised track line
-			 * X - deactive Mask Value
-			 * */
-			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
+			//Trace, crank detection after cross line
+
+			if ((check_crank_left())
 				) {
 				/* Left crank determined -> to left crank clearing processing */
 				handle(-45);
 				//standard (10,50)
 				motor(10, 50);
 				pattern = 31;
-				crankTimer=measuredSpeed*110;
 				cnt1 = 0;
 				break;
 			}
-			if ((sensor_inp(MASK0_3) == 0x07) // XXXX X111
-				) {
+			if (check_crank_right()) // XXXX X111
+				 {
 				/* Right crank determined -> to right crank clearing processing */
 				handle(45);
 				motor(50, 10);
@@ -499,21 +493,14 @@ void main(void)
 			break;
 
 		case 31:
-			/* Left crank clearing processing ? wait until stable
-			 * Right crank patterm 41
+			// Left crank clearing processing ? wait until stable
+
 			if (cnt1 > 200) {
 				pattern = 32;
 				cnt1 = 0;
 			}
 			break;
-			*/
 
-
-			if(cnt1 > crankTimer){
-				pattern =32;
-				cnt1=0;
-			}
-			break;
 
 
 		case 32:
@@ -903,6 +890,14 @@ int check_rightline_gap(void){
 	return 0;
 }
 
+int check_crank_right(void){
+	if(sensor_inp(MASK0_3) == 0x07){
+		return 1;
+	}
+	return 0;
+}
+
+
 /***********************************************************************/
 /* Left half line detection processing                                 */
 /* Return values: 0: not detected, 1: detected                         */
@@ -941,6 +936,13 @@ int check_leftline_onLine_secTime(void)
 
 int check_leftline_gap(void){
 	if(sensor_inp(MASK4_0) == 0x00){
+		return 1;
+	}
+	return 0;
+}
+
+int check_crank_left(void){
+	if(sensor_inp(MASK3_0) == 0xe0){
 		return 1;
 	}
 	return 0;
