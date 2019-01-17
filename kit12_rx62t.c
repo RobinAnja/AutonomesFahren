@@ -225,6 +225,10 @@ void main(void)
 				pattern=111;
 				break;
 			}
+			else if(check_not_on_track()){
+				motor(0,0);
+			}
+
 /*	       case 11:
 	            // Normal trace
 	            if( check_crossline() ) {    //Cross line check
@@ -808,15 +812,10 @@ unsigned char startbar_get(void)
 /***********************************************************************/
 int check_not_on_track(void)
 {
-	unsigned char b;
-	int ret;
-
-	ret = 0;
-	b = sensor_inp(MASK4_4);
-	if (b == 0x00) {
-		ret = 1;
+	if (sensor_inp(MASK4_4) == 0x00) {
+		return 1;
 	}
-	return ret;
+	return 0;
 }
 /***********************************************************************/
 /* Check Gap beetween Crossline                                      */
@@ -947,6 +946,7 @@ int check_crank_left(void){
 	}
 	return 0;
 }
+
 
 /***********************************************************************/
 /* DIP switch value read                                               */
