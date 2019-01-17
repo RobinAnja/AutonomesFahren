@@ -88,7 +88,7 @@ all: kit12_rx62t.mot
 # Tool invocations
 kit12_rx62t.mot: $(LINKER_OUTPUT_OUTPUTS)
 	@echo 'Invoking: Converter'
-	optlnk   "C:\WorkSpace\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.abs" -form=stype  -output="C:\WorkSpace\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.mot"
+	optlnk   "C:\Users\Max-FH\Desktop\FH\7 Sem\Autonomes fahren\Sample Code\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.abs" -form=stype  -output="C:\Users\Max-FH\Desktop\FH\7 Sem\Autonomes fahren\Sample Code\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.mot"
 	@echo 'Finished building target:'
 	@echo.
 	$(MAKE) --no-print-directory post-build
@@ -96,13 +96,13 @@ kit12_rx62t.mot: $(LINKER_OUTPUT_OUTPUTS)
 kit12_rx62t.abs: $(OBJS) $(LIBRARY_GENERATOR_OUTPUTTYPE_OUTPUTS)
 	@echo 'Invoking: Linker'
 	@echo 'Building target:'
-	optlnk  $(USER_OBJS) $(LIBS) -library="C:\WORKSP~1\KIT12_~1\KIT12_~1\Debug\kit12_rx62t.lib"   -noprelink -list="kit12_rx62t.map" -nooptimize -start=B_1,R_1,B_2,R_2,B,R,SU,SI/01000,PResetPRG/0FFFF8000,C_1,C_2,C,C"$$"*,D*,P,PIntPRG,W*/0FFFF8100,FIXEDVECT/0FFFFFFD0 -nologo -nomessage -rom=D=R,D_1=R_1,D_2=R_2 -output="C:\WorkSpace\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.abs" -subcommand="C:/WorkSpace/kit12_rx62t/kit12_rx62t\Debug\LinkerSubCommand.tmp"
+	optlnk  $(USER_OBJS) $(LIBS) -library="C:\Users\Max-FH\Desktop\FH\7SEM~1\AUTONO~1\SAMPLE~1\KIT12_~1\KIT12_~1\Debug\kit12_rx62t.lib"   -noprelink -list="kit12_rx62t.map" -nooptimize -start=B_1,R_1,B_2,R_2,B,R,SU,SI/01000,PResetPRG/0FFFF8000,C_1,C_2,C,C"$$"*,D*,P,PIntPRG,W*/0FFFF8100,FIXEDVECT/0FFFFFFD0 -nologo -nomessage -rom=D=R,D_1=R_1,D_2=R_2 -output="C:\Users\Max-FH\Desktop\FH\7 Sem\Autonomes fahren\Sample Code\kit12_rx62t\kit12_rx62t\Debug\kit12_rx62t.abs" -subcommand="C:/Users/Max-FH/Desktop/FH/7 Sem/Autonomes fahren/Sample Code/kit12_rx62t/kit12_rx62t\Debug\LinkerSubCommand.tmp"
 	@echo 'Finished building:'
 	@echo.
 
 kit12_rx62t.lib:  
 	@echo 'Invoking: Standard Library'
-	lbgrx -head=runtime,math,stdio,stdlib,string,new -section=L=C -section=L=C -cpu=rx600 -endian=big -output="kit12_rx62t.lib"
+	lbgrx -lang=c99 -head=runtime,math,stdio,stdlib,string,new -section=L=C -section=L=C -cpu=rx600 -endian=big -output="kit12_rx62t.lib"
 	@echo 'Finished building:'
 	@echo.
 

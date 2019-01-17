@@ -35,7 +35,7 @@ C_DEPS += \
 %.obj: ../%.c %.d
 	@echo 'Building file: $<'
 	@echo 'Invoking: Compiler'
-	ccrx -output=obj=$(dir $@)$(basename $(notdir $@)).obj -include=C:\Renesas\e2studio\Tools\Renesas\RX\1_2_1\include -debug -nologo -section=L=C -nologo -section=L=C -cpu=rx600 -endian=big  -lang=c "$<"
+	ccrx -output=obj=$(dir $@)$(basename $(notdir $@)).obj -include="C:\Renesas\e2studio\Tools\Renesas\RX\1_2_1\include" -debug -nologo -section=L=C -nologo -section=L=C -cpu=rx600 -endian=big -optimize=0  -lang=c99 "$<"
 	@echo 'Finished building: $<'
 	@echo.
 
@@ -43,7 +43,7 @@ C_DEPS += \
 # Each subdirectory must supply rules for scanning sources it contributes
 %.d: ../%.c
 	@echo 'Scanning started: $<'
-	scandep1 -MM -MP -MF  "$(@:%.obj=%.d)" -MT  "$(@:%.obj=%.d)"  -IC:\Renesas\e2studio\Tools\Renesas\RX\1_2_1\include -D__RX600=1 -D__BIG=1   -D__FPU=1  -D__RON=1 -D__UCHAR=1 -D__DBL4=1 -D__UBIT=1 -D__BITRIGHT=1 -D__DOFF=1   -D__RENESAS__=1 -D__RENESAS_VERSION__=0x010201 -D__RX=1   -E -quiet -I. -C $<
+	scandep1 -MM -MP -MF  "$(@:%.obj=%.d)" -MT  "$(@:%.obj=%.d)"   -I"C:/Users/Max-FH/Desktop/FH/7 Sem/Autonomes fahren/GitRepo/AutonomesFahren/kit12_rx62t" -I"C:/Users/Max-FH/Desktop/FH/7 Sem/Autonomes fahren/Sample Code/kit12_rx62t/kit12_rx62t" -I"C:\Renesas\e2studio\Tools\Renesas\RX\1_2_1\include" -D__RX600=1 -D__BIG=1   -D__FPU=1  -D__RON=1 -D__UCHAR=1 -D__DBL4=1 -D__UBIT=1 -D__BITRIGHT=1 -D__DOFF=1   -D__RENESAS__=1 -D__RENESAS_VERSION__=0x01020100 -D__RX=1   -E -quiet -I. -C $<
 	@echo 'Finished scanning: $<'
 	@echo.
 

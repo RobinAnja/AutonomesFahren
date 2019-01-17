@@ -29,7 +29,8 @@ This program supports the following boards:
 
 /* Constant settings */
 #define PWM_CYCLE       24575           /* Motor PWM period (16ms)     */
-#define SERVO_CENTER    2038            /* Servo center value NR 2 2038 */
+#define SERVO_CENTER    2240            /* Servo center value NR 2 2038 */
+										/* Servo center value NR 7 2240 */
 
 #define HANDLE_STEP     13              /* 1 degree value      NR default 13        */
 
@@ -45,7 +46,7 @@ This program supports the following boards:
 #define MASK4_4         0xff            /* O O O O  O O O O            */
 
 /*Own MASK declarations */
-#define MASK1_1_Outer		0x81			/* 0 X X X  X X X 0				*/
+#define MASK1_1_Outer		0x81			/* O X X X  X X X O				*/
 #define MASK1_0_Outer		0x80			/* O X X X  X X X X				*/
 #define MASK0_1_Outer		0x01			/* X X X X  X X X O				*/
 
@@ -97,6 +98,7 @@ int check_rightline_gap(void);
 int check_leftline_onLine_secTime(void);
 int check_rightline_onLine_secTime(void);
 void helper();
+int bitCount();
 
 /*======================================*/
 /* Global variable declarations         */
@@ -208,23 +210,42 @@ void main(void)
 			break;
 
 		case 11:
-			/* Normal trace */
+			//Normal trace
 
 			if(check_rightline_onLine()){
 				cnt1=0;
 				pattern=110;
-
 				break;
 			}
+
 			else if(check_leftline_onLine()){
 				cnt1=0;
 				pattern=111;
 				break;
 			}
+/*	       case 11:
+	            // Normal trace
+	            if( check_crossline() ) {    //Cross line check
+	    			stopAndFlash(0,23);
+
+	                pattern = 21;
+	                break;
+	            }
+	            if( check_rightline() ) {    //Right half line detection check
+	                pattern = 51;
+	                stopAndFlash(500, 2);
+	                break;
+	            }
+	            if( check_leftline() ) {     //Left half line detection check
+	                pattern = 61;
+	                stopAndFlash(500, 3);
+	                break;
+	            }*/
 
 		case 110:
 			//Crossline
 			if(check_leftline_onLine_secTime() && pattern==110){
+				cnt0=0;
 				pattern=21;
 				break;
 			}
@@ -242,6 +263,7 @@ void main(void)
 		case 111:
 			//crossline
 			if(check_rightline_onLine_secTime() && pattern==111){
+				cnt0=0;
 				pattern=21;
 				break;
 			}
@@ -261,7 +283,6 @@ void main(void)
 				/* Center -> straight */
 				handle(0);
 				motor(100, 100);
-				led_out(0x01);
 				break;
 
 				//Right Turn
@@ -286,9 +307,7 @@ void main(void)
 				handle(55);
 				//Default 12,5 9,5
 				motor(25, 15);
-				pattern = 12;
-
-				stopAndFlash(100,0);
+				//pattern = 12;
 				break;
 
 			case 0x03:
@@ -302,7 +321,6 @@ void main(void)
 				/* Slight amount right of center -> slight turn to left */
 				handle(-15);
 				motor(80, 80);
-				led_out(0x02);
 				break;
 
 			case 0x60:
@@ -315,9 +333,7 @@ void main(void)
 				/* Medium amount right of center -> medium turn to left */
 				handle(-55);
 				motor(15, 25);
-				pattern = 13;
-
-				stopAndFlash(100,0);
+				//pattern = 13;
 				break;
 
 			case 0xc0:
@@ -374,13 +390,13 @@ void main(void)
 			break;
 
 		case 21:
+			stopAndFlash(0,23);
 			//start Timer for speed messeurment
 			/* Processing at 1st cross line */
 			handle(0);
 			// initial break on first line read
 			pattern = 22;
-			cnt0=0;
-			cnt1 = 0;
+			cnt1=0;
 			break;
 
 
@@ -416,22 +432,20 @@ void main(void)
 			if (check_crossline_gap()) {
 
 				//measurement of Speed
-
-				measuredSpeed = gapDistance/cnt0;
+				measuredSpeed = gapDistance/(double)cnt0;
 
 				pattern = 222;
-				cnt1 = 0;
+				cnt1=0;
 			}
 			break;
 			
 		case 222:
 			if (cnt1 > 50) {
 				pattern = 23;
-				cnt1 = 0;
 			}
 			break;
-		case 23:
 
+		case 23:
 			helper();
 			/* Trace, crank detection after cross line
 			 *
@@ -442,7 +456,6 @@ void main(void)
 			if ((sensor_inp(MASK3_0) == 0xe0)// 111X XXXX
 				) {
 				/* Left crank determined -> to left crank clearing processing */
-				led_out(0x1); //LED3
 				handle(-45);
 				//standard (10,50)
 				motor(10, 50);
@@ -506,7 +519,6 @@ void main(void)
 		case 32:
 			/* Left crank clearing processing ? check end of turn */
 			if (sensor_inp(MASK3_3) == 0x60) {
-				led_out(0x0);
 				pattern = 11;
 				cnt1 = 0;
 			}
@@ -523,7 +535,6 @@ void main(void)
 		case 42:
 			/* Right crank clearing processing ? check end of turn */
 			if (sensor_inp(MASK3_3) == 0x06) {
-				led_out(0x0);
 				pattern = 11;
 				cnt1 = 0;
 			}
@@ -532,7 +543,6 @@ void main(void)
 		case 51:
 			/* Processing at 1st right half line detection */
 			//standard 2
-			led_out(0x3); //LED 23
 
 
 			handle(0);
@@ -544,7 +554,6 @@ void main(void)
 		case 52: // wait 100ms and go to next pattern [PDF 142]
 			/* Read but ignore 2nd time */
 			if (cnt1 > 100) { //wait 100ms
-				led_out(0x2); //LED 2
 
 				pattern = 53;
 				cnt1 = 0;
@@ -597,7 +606,6 @@ void main(void)
 			   (sensor_inp(MASK4_4) == 0x0c) ||
 			   (sensor_inp(MASK4_4) == 0x8c))
 			   {
-				led_out(0x0);
 
 				pattern = 11;
 				cnt1 = 0;
@@ -606,7 +614,6 @@ void main(void)
 
 		case 61:
 			/* Processing at 1st left half line detection */
-			led_out(0x3);
 			handle(0);
 			motor(0, 0);
 			pattern = 62;
@@ -667,7 +674,6 @@ void main(void)
 				(sensor_inp(MASK4_4) == 0xc0) ||
 			   (sensor_inp(MASK4_4) == 0xc8))
 			   {
-				led_out(0x0);
 				pattern = 11;
 				cnt1 = 0;
 			}
@@ -891,7 +897,7 @@ int check_rightline_onLine_secTime(void)
 
 
 int check_rightline_gap(void){
-	if(sensor_inp(MASK0_2) == 0x00){
+	if(sensor_inp(MASK0_4) == 0x00){
 		return 1;
 	}
 	return 0;
@@ -934,7 +940,7 @@ int check_leftline_onLine_secTime(void)
 }
 
 int check_leftline_gap(void){
-	if(sensor_inp(MASK2_0) == 0x00){
+	if(sensor_inp(MASK4_0) == 0x00){
 		return 1;
 	}
 	return 0;
@@ -1068,38 +1074,62 @@ void handle(int angle)
 //Nur für Testen des Geschwindigkeits messens
 void helper(){
 	while(1){
-
-
-		if(measuredSpeed>0.0 && measuredSpeed<1.5 ){
+		if(measuredSpeed>0 && measuredSpeed<0.02 ){
 			led_out_m(0x00);
-		}
-		else if(measuredSpeed>=1.5 && measuredSpeed<2.0 ){
-					led_out_m(0x01);
-				}
-		else if(measuredSpeed>=2.0 && measuredSpeed<2.5 ){
-							led_out_m(0x02);
-						}
-		else if(measuredSpeed>=3.0 && measuredSpeed<3.5 ){
-							led_out_m(0x03);
-						}
-		else if(measuredSpeed>=4.0 && measuredSpeed<4.5 ){
-							led_out_m(0x04);
-						}
-		else if(measuredSpeed>=5.0 && measuredSpeed<5.5 ){
-							led_out_m(0x05);
-						}
-		else if(measuredSpeed>=6.0 && measuredSpeed<6.5 ){
-									led_out_m(0x06);
-								}
-		else if(measuredSpeed>=6.5 && measuredSpeed<7.0 ){
-									led_out_m(0x07);
-								}
-		else{
 			stopAndFlash(1000,0);
-		}
+				}
+		else if(measuredSpeed>=0.02 && measuredSpeed<0.021 ){
+			led_out_m(0x01);
+			stopAndFlash(1000,0);
+				}
+		else if(measuredSpeed>=0.021 && measuredSpeed<0.022 ){
+			led_out_m(0x02);
+			stopAndFlash(1000,0);
+				}
+		else if(measuredSpeed>=0.022 && measuredSpeed<0.023 ){
+			led_out_m(0x03);
+			stopAndFlash(1000,0);
+				}
+		else if(measuredSpeed>=0.023 && measuredSpeed<0.024 ){
+			led_out_m(0x04);
+			stopAndFlash(1000,0);
+				}
+		else if(measuredSpeed>=0.024 && measuredSpeed<0.025 ){
+			led_out_m(0x05);
+			stopAndFlash(1000,0);
+				}
+		else if(measuredSpeed>=0.025 && measuredSpeed<0.026 ){
+			led_out_m(0x06);
+			stopAndFlash(1000,0);
+				}
+		else if(measuredSpeed>=0.027 && measuredSpeed<0.05 ){
+			led_out_m(0x07);
+			stopAndFlash(1000,0);
+				}
+
+
+		stopAndFlash(100,3);
 
 	}
 }
+//Jonas
+int bitCount(unsigned int n) {
+
+    int counter = 0;
+    while(n) {
+        counter += n % 2;
+        n >>= 1;
+    }
+    return counter;
+ }
+
+
+int getBitwiseAndSimilarity(int input, int bitsToCheck){
+  int xorResult = input ^ bitsToCheck;
+
+  return bitCount(xorResult);
+}
+
 /***********************************************************************/
 /*Absichtliche unendlich schleife, in der das auto gestoppt wird
  * frequenz gibt an in welcher frequenz die LED's blinken
